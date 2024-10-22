@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "AttentionSmithy"
+version = "0.0.1"
+authors = [
+  { name="Caleb Cranney", email="11773171+CCranney@users.noreply.github.com" },
+]
+description = ""
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+dependencies = [
+    'pytorch-lightning>=2.2.1',
+    'scikit-learn>=1.1.2',
+    'pandas>=1.2.2',
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.urls]
+"Homepage" = "https://github.com/CCranney/AttentionSmithy"
+"Bug Tracker" = "https://github.com/CCranney/AttentionSmithy/issues"
