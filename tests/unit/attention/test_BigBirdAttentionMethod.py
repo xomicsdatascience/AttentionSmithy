@@ -1738,7 +1738,7 @@ def test__BigBirdAttentionMethod__error_thrown_when_query_sequence_length_not_di
     errorOutput = f"query input sequence length must be divisible by the size of query blocks ({block_size_query}). Query input sequence length: {num_blocks_query*block_size_query + 1}"
     empty_globals = None
     with pytest.raises(RuntimeError, match=re.escape(errorOutput)):
-        bb.initialize_parameters(query, key, empty_globals, empty_globals)
+        bb._initialize_parameters(query, key, empty_globals, empty_globals)
 
 
 def test__BigBirdAttentionMethod__error_thrown_when_key_sequence_length_not_divisible_by_num_blocks(
@@ -1749,7 +1749,7 @@ def test__BigBirdAttentionMethod__error_thrown_when_key_sequence_length_not_divi
     errorOutput = f"key and value input sequence length must be divisible by the size of key/value blocks ({block_size_kv}). Key/Value input sequence length: {num_blocks_kv*block_size_kv + 1}"
     empty_globals = None
     with pytest.raises(RuntimeError, match=re.escape(errorOutput)):
-        bb.initialize_parameters(query, key, empty_globals, empty_globals)
+        bb._initialize_parameters(query, key, empty_globals, empty_globals)
 
 
 def test__BigBirdAttentionMethod__error_thrown_when_query_and_kv_block_sizes_differ_for_causal_run(
@@ -1763,7 +1763,7 @@ def test__BigBirdAttentionMethod__error_thrown_when_query_and_kv_block_sizes_dif
     errorOutput = f"query block size ({block_size_query}) must match kv block size ({block_size_kv}) when using causal masking to enable masking on the diagonal."
     empty_globals = None
     with pytest.raises(RuntimeError, match=re.escape(errorOutput)):
-        bb.initialize_parameters(query, key, empty_globals, empty_globals)
+        bb._initialize_parameters(query, key, empty_globals, empty_globals)
 
 
 def return_expected_result(expected_attention_scores, value):
@@ -1820,7 +1820,7 @@ def assert_big_bird_works_on_full_dataset_regardless_of_global_block_specificati
         num_random_blocks=no_purpose_num_random_blocks,
     )
     bb.device = device
-    bb.initialize_parameters(query, key, global_tokens_query, global_tokens_kv)
+    bb._initialize_parameters(query, key, global_tokens_query, global_tokens_kv)
     kv_index_table = create_fully_populated_kv_index_table(
         bb.num_sparse_query_blocks, bb.num_blocks_kv
     )
