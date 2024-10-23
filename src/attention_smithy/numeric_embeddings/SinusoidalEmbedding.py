@@ -11,8 +11,8 @@ class SinusoidalEmbedding:
             _, sequence_length, _ = x.shape
             return self.positional_encoding[:sequence_length, :].to(x.device)
         else:
-            sinusoidal_embedding = self._encode_float_values(x, custom_values)
-            return sinusoidal_embedding
+            custom_value_encoding = self._encode_custom_values(x, custom_values)
+            return custom_value_encoding
 
     def _initialize_all_possible_positional_encodings(self, d_model, max_len):
         self.positional_encoding = torch.zeros(max_len, d_model)
@@ -22,7 +22,7 @@ class SinusoidalEmbedding:
         self.positional_encoding[:, 0::2] = sin
         self.positional_encoding[:, 1::2] = cos
 
-    def _encode_float_values(self, x, custom_values):
+    def _encode_custom_values(self, x, custom_values):
         sinusoidal_embedding = torch.zeros_like(x)
         sin, cos = self._find_sin_and_cos_embeddings_of_given_values(
             custom_values.unsqueeze(2)
