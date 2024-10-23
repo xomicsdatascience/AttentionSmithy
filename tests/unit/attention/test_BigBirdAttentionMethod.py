@@ -1769,7 +1769,6 @@ def test__BigBirdAttentionMethod__error_thrown_when_query_and_kv_block_sizes_dif
 def return_expected_result(expected_attention_scores, value):
     attention_probabilities = F.softmax(expected_attention_scores, dim=-1)
     expected_result = torch.einsum("bnqk, bnkd -> bnqd", attention_probabilities, value)
-    expected_result = expected_result.transpose(1, 2).contiguous().flatten(-2)
     return expected_result
 
 

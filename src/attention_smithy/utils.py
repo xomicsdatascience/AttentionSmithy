@@ -5,8 +5,10 @@ import torch
 from torch import nn
 import copy
 
+
 def clone_module_consecutively(module, N):
     return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
+
 
 def seed_everything(seed: int):
     random.seed(seed)
@@ -18,10 +20,12 @@ def seed_everything(seed: int):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = True
 
+
 def create_causal_mask(size):
     attn_shape = (1, size, size)
     subsequent_mask = torch.triu(torch.ones(attn_shape), diagonal=1).type(torch.uint8)
     return subsequent_mask == 0
+
 
 def select_activation_function(activation_param):
     if activation_param == "leaky_relu_steep":

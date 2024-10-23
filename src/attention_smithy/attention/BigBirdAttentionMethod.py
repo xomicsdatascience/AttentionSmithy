@@ -97,7 +97,7 @@ class BigBirdAttentionMethod(nn.Module):
         global_tokens_query: torch.Tensor,
         global_tokens_kv: torch.Tensor,
         padding_attention_mask: torch.Tensor = None,
-        kv_index_table = None,
+        kv_index_table=None,
     ) -> torch.Tensor:
         """
         Forward pass of the Big Bird attention module.
@@ -119,7 +119,7 @@ class BigBirdAttentionMethod(nn.Module):
                 tests.
 
         Returns:
-            torch.Tensor: The output tensor.
+            torch.Tensor: The output tensor, of shape (batch_size, num_heads, query_length, head_dim)
         """
         self._initialize_parameters(q, k, global_tokens_query, global_tokens_kv)
         key_blocks, query_blocks, value_blocks = (
@@ -339,10 +339,8 @@ class BigBirdAttentionMethod(nn.Module):
         self, kv_index_table, sparse_query_blocks, key_blocks, padding_attention_mask
     ):
         if kv_index_table == None:
-            kv_index_table = (
-                self._create_kv_index_table_for_local_global_random_block_selection().to(
-                    key_blocks.device
-                )
+            kv_index_table = self._create_kv_index_table_for_local_global_random_block_selection().to(
+                key_blocks.device
             )
         if self.max_block_limit != 0:
             kv_index_table = kv_index_table[:, : self.max_block_limit]
@@ -350,8 +348,10 @@ class BigBirdAttentionMethod(nn.Module):
         kv_index_table, first_occurrence_mask = _determine_first_occurrences(
             kv_index_table
         )
-        sparse_attention_scores = self._calculate_all_sparse_attention_scores_from_index(
-            sparse_query_blocks, key_blocks, kv_index_table, padding_attention_mask
+        sparse_attention_scores = (
+            self._calculate_all_sparse_attention_scores_from_index(
+                sparse_query_blocks, key_blocks, kv_index_table, padding_attention_mask
+            )
         )
         sparse_attention_scores = self._pad_duplicate_key_blocks(
             first_occurrence_mask, sparse_attention_scores
@@ -382,12 +382,16 @@ class BigBirdAttentionMethod(nn.Module):
         key_blocks, query_blocks, value_blocks = self._reshape_tensors_into_blocks(
             k, q, v
         )
-        key_blocks, query_blocks, value_blocks = self._transpose_head_num_and_batch_size(
-            key_blocks, query_blocks, value_blocks
+        key_blocks, query_blocks, value_blocks = (
+            self._transpose_head_num_and_batch_size(
+                key_blocks, query_blocks, value_blocks
+            )
         )
         return key_blocks, query_blocks, value_blocks
 
-    def _transpose_head_num_and_batch_size(self, key_blocks, query_blocks, value_blocks):
+    def _transpose_head_num_and_batch_size(
+        self, key_blocks, query_blocks, value_blocks
+    ):
         query_blocks = query_blocks.transpose(0, 1)
         key_blocks = key_blocks.transpose(0, 1)
         value_blocks = value_blocks.transpose(0, 1)
@@ -409,11 +413,6 @@ class BigBirdAttentionMethod(nn.Module):
         )
         final_outputs = final_outputs.transpose(0, 1)
         final_outputs = final_outputs.view(q.shape)
-        final_outputs = (
-            final_outputs.transpose(1, 2)
-            .contiguous()
-            .view(self.batch_size, self.query_length, self.num_heads * self.head_dim)
-        )
         return final_outputs
 
     def _matmul_global_blocks_by_value_blocks(
