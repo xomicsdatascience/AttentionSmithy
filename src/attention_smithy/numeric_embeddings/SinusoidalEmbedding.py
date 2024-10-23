@@ -23,13 +23,13 @@ class SinusoidalEmbedding:
         self.positional_encoding[:, 1::2] = cos
 
     def _encode_custom_values(self, x, custom_values):
-        sinusoidal_embedding = torch.zeros_like(x)
+        custom_encoding = torch.zeros_like(x)
         sin, cos = self._find_sin_and_cos_embeddings_of_given_values(
             custom_values.unsqueeze(2)
         )
-        sinusoidal_embedding[:, :, 0::2] = sin
-        sinusoidal_embedding[:, :, 1::2] = cos
-        return sinusoidal_embedding
+        custom_encoding[:, :, 0::2] = sin
+        custom_encoding[:, :, 1::2] = cos
+        return custom_encoding
 
     def _find_sin_and_cos_embeddings_of_given_values(self, initial_values):
         values = initial_values / (10_000**self.exponent)

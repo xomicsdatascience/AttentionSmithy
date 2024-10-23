@@ -107,7 +107,7 @@ class BigBirdAttentionMethod(nn.Module):
             k (torch.Tensor): The key tensor embedding.
             v (torch.Tensor): The value tensor embedding.
             positional_embedding (attention_smithy.PositionalEmbedding): Class that facilitates positional embeddings.
-                NOTE: Not currently used in Big Bird Attention. Would apply for ALiBi and Relative positional
+                TODO: Not currently used in Big Bird Attention. Would apply for ALiBi and Relative positional
                 embeddings.
             global_tokens_query (torch.Tensor): A mask for the query tensor marking global tokens.
             global_tokens_kv (torch.Tensor): A mask for the key and value tensors marking global tokens.

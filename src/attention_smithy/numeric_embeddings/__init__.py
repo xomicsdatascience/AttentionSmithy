@@ -1,1 +1,2 @@
 from attention_smithy.numeric_embeddings.SinusoidalEmbedding import SinusoidalEmbedding
+from attention_smithy.numeric_embeddings.RotaryEmbedding import RotaryEmbedding
