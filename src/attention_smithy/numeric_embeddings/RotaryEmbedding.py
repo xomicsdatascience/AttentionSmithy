@@ -3,13 +3,13 @@ from rotary_embedding_torch import RotaryEmbedding as RotaryEmbeddingTorch
 
 class RotaryEmbedding:
     """
-    A class that adjusts the query/key matrices to reflect position immediately preceding
-        attention calculations. Performed by breaking a token embedding into groups of 2, treats
+    A class that adjusts the query/key matrices to reflect position.
+        Performed by breaking a token embedding into groups of 2, treats
         each group as a set of coordinates, then incrementally adjusts the angle of those
         coordinates, with variance depending on the position of the token.
     WHEN APPLIED: After query/key/values are multiplied by their respective weights
         in attention, but before attention scores are calculated.
-    NOTE: This is largely performed with an external package.
+    NOTE: This is largely performed with an external package, rotary_embedding_torch.
     """
 
     def __init__(self, embedding_dimension):
