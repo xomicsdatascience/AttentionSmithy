@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
+from attention_smithy.utils import create_causal_mask
 
 
 class StandardAttentionMethod(nn.Module):
@@ -10,21 +11,24 @@ class StandardAttentionMethod(nn.Module):
         through this module.
     """
 
-    def __init__(self, dropout: float = 0.0):
+    def __init__(self, dropout: float = 0.0, is_causal_masking: bool = False):
         """
         Initializes the standard attention module.
 
         Args:
             dropout (float, optional): The dropout probability. Defaults to 0.0.
+            is_causal_masking (bool, optional): When set to true, tokens can only be attended to by past tokens.
+                This is most often seen decoder models like GPT. Defaults to false.
         """
 
         super().__init__()
         self.dropout_layer = nn.Dropout(dropout)
+        self.is_causal_masking = is_causal_masking
 
     def forward(
         self,
-        k,
         q,
+        k,
         v,
         **kwargs,
     ):
@@ -39,8 +43,26 @@ class StandardAttentionMethod(nn.Module):
         Returns:
             torch.Tensor: The output tensor, of shape (batch_size, num_heads, query_length, head_dim)
         """
-        attn_scores = torch.einsum("bnqd, bnkd -> bnqk", q, k)
+        attn_scores = self._calculate_query_by_key_attention_scores(q, k)
+        #attn_scores += positional_embedding.calculate_alibi_positional_embedding(q, k)
+        attn_scores = self._apply_diagonal_causal_masking_if_relevant(attn_scores)
         attn_probs = F.softmax(attn_scores, dim=-1)
         attn_probs = self.dropout_layer(attn_probs)
-        attn_output = torch.einsum("bnqk, bnkd -> bnqd", attn_probs, v)
+        attn_output = torch.matmul(attn_probs, v)
         return attn_output, attn_probs
+
+    def _calculate_query_by_key_attention_scores(self, q, k):
+        head_dimension = q.shape[-1]
+        attn_scores = torch.matmul(q, k.transpose(-2, -1))
+        attn_scores /= torch.sqrt(
+            torch.tensor(head_dimension, dtype=torch.float32)
+        )
+        return attn_scores
+
+    def _apply_diagonal_causal_masking_if_relevant(self, attn_scores):
+        if self.is_causal_masking:
+            causal_mask = create_causal_mask(attn_scores.size(-1))
+            attn_scores = attn_scores.masked_fill(causal_mask == 0, float("-inf"))
+        return attn_scores
+
+
