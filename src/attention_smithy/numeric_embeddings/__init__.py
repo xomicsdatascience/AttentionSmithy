@@ -1,0 +1,1 @@
+from attention_smithy.numeric_embeddings.SinusoidalEmbedding import SinusoidalEmbedding
