@@ -7,7 +7,8 @@ def test__ALiBiPositionEmbedding__general_test():
     num_heads = 2
     embedding = ALiBiPositionEmbedding(num_heads=num_heads)
     output = embedding(query_length=5, kv_length=5)
-
+    print()
+    print(output.shape)
     expected_output = torch.tensor([
         [
             [ 0.0, -0.5, -1.0, -1.5, -2.0],

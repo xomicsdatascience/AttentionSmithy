@@ -15,6 +15,11 @@ class SinusoidalEmbedding:
         """
         Args:
             embedding_dimension (int): The expected dimension size for each token embedding.
+        Attributes:
+            exponent (torch.Tensor): The exponent values used in the sinusoidal equation. In
+                graphs, this is the "2i/d_model" portion that 10,000 is raised to. For an
+                example embedding dimension of 10, this would result in the tensor
+                [0, 2, 4, 6, 8] / 10, or [0.0, 0.2, 0.4, 0.6, 0.8].
         """
         self.exponent = torch.arange(0, embedding_dimension, 2) / embedding_dimension
 
