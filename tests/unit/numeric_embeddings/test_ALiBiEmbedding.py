@@ -1,11 +1,11 @@
 import pytest
 import re
 import torch
-from attention_smithy.numeric_embeddings import ALiBiEmbedding
+from attention_smithy.numeric_embeddings import ALiBiPositionEmbedding
 
-def test__ALiBiEmbedding__general_test():
+def test__ALiBiPositionEmbedding__general_test():
     num_heads = 2
-    embedding = ALiBiEmbedding(num_heads=num_heads)
+    embedding = ALiBiPositionEmbedding(num_heads=num_heads)
     output = embedding(query_length=5, kv_length=5)
 
     expected_output = torch.tensor([
@@ -26,9 +26,9 @@ def test__ALiBiEmbedding__general_test():
     ])
     assert torch.allclose(output, expected_output)
 
-def test__ALiBiEmbedding__slopeDegree4():
+def test__ALiBiPositionEmbedding__slopeDegree4():
     num_heads = 2
-    embedding = ALiBiEmbedding(num_heads=num_heads, slope_degree=4)
+    embedding = ALiBiPositionEmbedding(num_heads=num_heads, slope_degree=4)
     output = embedding(query_length=5, kv_length=5)
     expected_output = torch.tensor([
         [
@@ -48,12 +48,10 @@ def test__ALiBiEmbedding__slopeDegree4():
     ])
     assert torch.allclose(output, expected_output)
 
-def test__ALiBiEmbedding__query_and_kv_lengths_differ_throws_value_error():
+def test__ALiBiPositionEmbedding__query_and_kv_lengths_differ_throws_value_error():
     query_length = 4
     kv_length = 5
-    embedding = ALiBiEmbedding(num_heads=2, slope_degree=4)
-    errorOutput = f"ALiBi Embedding failed. Query and Key sequence length must be identical, as in self-attention. Query length: {query_length}, Key length: {kv_length}"
+    embedding = ALiBiPositionEmbedding(num_heads=2, slope_degree=4)
+    errorOutput = f"ALiBi Position Embedding failed. Query and Key sequence length must be identical, as in self-attention. Query length: {query_length}, Key length: {kv_length}"
     with pytest.raises(ValueError, match=re.escape(errorOutput)):
         embedding(query_length=query_length, kv_length=kv_length)
-
-
