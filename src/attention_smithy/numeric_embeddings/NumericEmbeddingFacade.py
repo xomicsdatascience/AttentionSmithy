@@ -33,12 +33,12 @@ class NumericEmbeddingFacade:
         values instead, that option is available as well.
     """
     def __init__(self,
-                 sinusoidalPosition=_NoAddEmbedding(),
-                 sinusoidalCustom=_NoAddEmbedding(),
-                 learnedPosition=_NoAddEmbedding(),
-                 rotaryPosition=_PassthroughEmbedding(),
-                 alibiPosition=_NoAddEmbedding(),
-                 alibiCustom=_NoAddEmbedding(),
+                 sinusoidal_position=_NoAddEmbedding(),
+                 sinusoidal_custom=_NoAddEmbedding(),
+                 learned_position=_NoAddEmbedding(),
+                 rotary_position=_PassthroughEmbedding(),
+                 alibi_position=_NoAddEmbedding(),
+                 alibi_custom=_NoAddEmbedding(),
                  ):
         """
         Args:
@@ -56,29 +56,29 @@ class NumericEmbeddingFacade:
                 will just return 0.
 
         """
-        self.sinusoidalPosition = sinusoidalPosition
-        self.sinusoidalCustom = sinusoidalCustom
-        self.learnedPosition = learnedPosition
-        self.rotaryPosition = rotaryPosition
-        self.alibiPosition = alibiPosition
-        self.alibiCustom = alibiCustom
+        self.sinusoidal_position = sinusoidal_position
+        self.sinusoidal_custom = sinusoidal_custom
+        self.learned_position = learned_position
+        self.rotary_position = rotary_position
+        self.alibi_position = alibi_position
+        self.alibi_custom = alibi_custom
 
     def calculate_sinusoidal_and_learned_tokenizations(self, x, sinusoidal_custom_values=None, learned_values=None, **kwargs):
         output = torch.zeros_like(x)
-        output += self.sinusoidalPosition(x)
-        output += self.sinusoidalCustom(x, sinusoidal_custom_values)
-        output += self.learnedPosition(learned_values)
+        output += self.sinusoidal_position(x)
+        output += self.sinusoidal_custom(x, sinusoidal_custom_values)
+        output += self.learned_position(learned_values)
         return output
 
     def apply_rotation_to_matrix(self, matrix):
-        return self.rotaryPosition(matrix)
+        return self.rotary_position(matrix)
 
     def calculate_alibi_attention_score_distances(self, query, key, alibi_query_values=None, alibi_key_values=None, **kwargs):
         batch_size, num_heads, query_sequence_length, _ = query.shape
         _, _, key_sequence_length, _ = key.shape
-        output = torch.zeros((batch_size, num_heads, query_sequence_length, embedding_dimension))
-        output += self.alibiPosition(query_sequence_length, key_sequence_length)
-        output += self.alibiCustom(alibi_query_values, alibi_key_values)
+        output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length))
+        output += self.alibi_position(query_sequence_length, key_sequence_length)
+        output += self.alibi_custom(alibi_query_values, alibi_key_values)
         return output
 
 

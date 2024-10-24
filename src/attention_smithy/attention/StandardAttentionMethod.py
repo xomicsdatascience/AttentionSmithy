@@ -30,6 +30,7 @@ class StandardAttentionMethod(nn.Module):
         q,
         k,
         v,
+        numeric_embedding_facade,
         padding_and_loss_attention_mask=None,
         **kwargs,
     ):
@@ -50,7 +51,7 @@ class StandardAttentionMethod(nn.Module):
             torch.Tensor: The output tensor, of shape (batch_size, num_heads, query_length, head_dim)
         """
         attn_scores = self._calculate_query_by_key_attention_scores(q, k)
-        # attn_scores += positional_embedding.calculate_alibi_positional_embedding(q, k)
+        attn_scores += numeric_embedding_facade.calculate_alibi_attention_score_distances(q, k, **kwargs)
         attn_scores = self._apply_masking_to_attention_scores(
             attn_scores, padding_and_loss_attention_mask
         )
