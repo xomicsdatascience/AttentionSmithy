@@ -1,16 +1,16 @@
 import torch
-from attention_smithy.numeric_embeddings import SinusoidalEmbedding
+from attention_smithy.numeric_embeddings import SinusoidalPositionEmbedding, SinusoidalCustomEmbedding
 
 
-def test__SinusoidalEmbedding__positional_encoding_has_expected_shape():
+def test__SinusoidalPositionEmbedding__positional_encoding_has_expected_shape():
     embedding_dimension_size = 128
     max_len = 100
-    embedding = SinusoidalEmbedding(embedding_dimension=embedding_dimension_size, max_len=max_len)
+    embedding = SinusoidalPositionEmbedding(embedding_dimension=embedding_dimension_size, max_len=max_len)
     assert embedding.positional_encoding.shape == (max_len, embedding_dimension_size)
 
 
-def test__SinusoidalEmbedding__position_values_encode_correctly():
-    embedding = SinusoidalEmbedding(embedding_dimension=10, max_len=4)
+def test__SinusoidalPositionEmbedding__position_values_encode_correctly():
+    embedding = SinusoidalPositionEmbedding(embedding_dimension=10, max_len=4)
     x = torch.rand(2, 4, 10)
     encoding = embedding(x)
     expected_encoding = torch.tensor(
@@ -68,8 +68,8 @@ def test__SinusoidalEmbedding__position_values_encode_correctly():
     assert torch.allclose(encoding, expected_encoding, atol=1e-4)
 
 
-def test__SinusoidalEmbedding__float_values_encode_correctly():
-    embedding = SinusoidalEmbedding(embedding_dimension=10, max_len=2)
+def test__SinusoidalCustomEmbedding__float_values_encode_correctly():
+    embedding = SinusoidalCustomEmbedding(embedding_dimension=10)
     x = torch.rand(2, 2, 10)
     custom_values = torch.tensor(
         [
