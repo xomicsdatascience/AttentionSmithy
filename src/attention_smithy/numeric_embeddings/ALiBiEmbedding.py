@@ -23,3 +23,7 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(query_positions, kv_positions)
         return purely_negative_distance_matrix * self.slope_m_values
 
+class ALiBiCustomEmbedding(ALiBiEmbedding):
+    def __call__(self, custom_query_values, custom_key_values):
+        purely_negative_distance_matrix = self._determine_negative_distance_matrix(custom_query_values[:, :, None], custom_key_values[:, None, :])
+        return purely_negative_distance_matrix[:, None, :, :] * self.slope_m_values[None, :, :, :]
