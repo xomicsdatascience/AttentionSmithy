@@ -14,6 +14,7 @@ class MultiheadAttention(nn.Module):
         preprocessing steps (weight matrix multiplication, reshaping into heads etc.) to
         remain constant.
     """
+
     def __init__(self, embedding_dimension, number_of_heads, attention_method, **kwargs):
         """
         Args:
@@ -25,6 +26,7 @@ class MultiheadAttention(nn.Module):
                 the standard method as described in the original paper as well as big
                 bird attention, which is a
         """
+
         super().__init__()
         self.embedding_dimension = embedding_dimension
         self.number_of_heads = number_of_heads
@@ -39,6 +41,25 @@ class MultiheadAttention(nn.Module):
         self.out_weights = nn.Linear(embedding_dimension, embedding_dimension)
 
     def forward(self, input_query, input_key, input_value, numeric_embedding_facade, **kwargs):
+        """
+        Args:
+            input_query (torch.Tensor): The tokenized input meant to be analyzed as the
+                "query" matrix described in the original paper.
+            input_key (torch.Tensor): The tokenized input meant to be analyzed as the
+                "key" matrix described in the original paper.
+            input_value (torch.Tensor): The tokenized input meant to be analyzed as the
+                "value" matrix described in the original paper.
+            numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
+                all numeric embedding methods (including position). Required to enable
+                rotary ombedding.
+        Returns:
+            attention_outputs (torch.Tensor): The output tensor, of shape
+                (batch_size, query_length, embedding_dimension).
+            attention_probablities (torch.Tensor): The attention probablity matrix calculated during the
+                attention method. Returned with the output for external analysis reasons. Of shape
+                (batch_size, number_of_heads, query_length, kv_length).
+        """
+
         key, query, value = self._prepare_matrices_for_attention(input_key, input_query, input_value)
         query, key = numeric_embedding_facade.apply_rotation_to_query_and_key_matrices(query, key)
         attention_output, attention_probabilities = self.attention_method(
