@@ -42,7 +42,7 @@ def create_causal_mask(sequence_length):
     return subsequent_mask == 0
 
 
-def select_activation_function(activation_param):
+def select_activation_function_module(activation_param):
     if activation_param == "leaky_relu_steep":
         return nn.LeakyReLU(negative_slope=0.1)
     elif activation_param == "leaky_relu_slight":

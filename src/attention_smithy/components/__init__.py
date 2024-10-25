@@ -1,1 +1,2 @@
 from attention_smithy.components.MultiheadAttention import MultiheadAttention
+from attention_smithy.components.FeedForwardNetwork import FeedForwardNetwork
