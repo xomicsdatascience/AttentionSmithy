@@ -12,15 +12,15 @@ class RotaryEmbedding:
     NOTE: This is largely performed with an external package, rotary_embedding_torch.
     """
 
-    def __init__(self, embedding_dimension):
+    def __init__(self, head_dimension):
         """
         Initializes the embedding class.
 
         Args:
-            embedding_dimension (int): The expected dimension size for each token embedding.
+            head_dimension (int): The expected dimension size for each head.
         """
 
-        self.rotary = RotaryEmbeddingTorch(dim=embedding_dimension)
+        self.rotary = RotaryEmbeddingTorch(dim=head_dimension)
 
     def __call__(self, input, *args, **kwargs):
         """

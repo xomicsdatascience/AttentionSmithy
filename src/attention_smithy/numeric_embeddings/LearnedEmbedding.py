@@ -8,7 +8,7 @@ class LearnedEmbedding(nn.Module):
         """
         Args:
             vocab_size (int): The number of values in the expected vocabulary.
-            embedding_dimension (int): The embedding dimension size.
+            embedding_dimension (int): The token embedding dimension size.
             padding_idx (int): The index assigned to ignorable padding tokens.
         Attributes:
             embedding (nn.Embedding): a module to pass position or other sequences

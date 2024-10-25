@@ -70,8 +70,8 @@ class NumericEmbeddingFacade:
         output += self.learned_position(learned_values)
         return output
 
-    def apply_rotation_to_matrix(self, matrix):
-        return self.rotary_position(matrix)
+    def apply_rotation_to_query_and_key_matrices(self, query, key):
+        return self.rotary_position(query), self.rotary_position(key)
 
     def calculate_alibi_attention_score_distances(self, query, key, alibi_query_values=None, alibi_key_values=None, **kwargs):
         batch_size, num_heads, query_sequence_length, _ = query.shape
