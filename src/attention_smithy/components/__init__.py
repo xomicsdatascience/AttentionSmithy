@@ -1,2 +1,3 @@
 from attention_smithy.components.MultiheadAttention import MultiheadAttention
 from attention_smithy.components.FeedForwardNetwork import FeedForwardNetwork
+from attention_smithy.components.SublayerUnit import SublayerUnit
