@@ -21,8 +21,23 @@ def seed_everything(seed: int):
     torch.backends.cudnn.benchmark = True
 
 
-def create_causal_mask(size):
-    attn_shape = (1, size, size)
+def create_causal_mask(sequence_length):
+    """
+    Creates a boolean tensor where values above the diagonal are False, all others
+        are True. This creates a "causal" mask in attention that prevents tokens
+        from receiving information from future tokens. This is used in things like
+        GPT to optimize training. This is applied to attention_scores before softmax.
+    NOTE: Causal masking only applies to self-attention, so sequence_length represents
+        both query and key sequence lengths.
+
+    Args:
+        sequence_length (int): The dimensions of the square mask.
+
+    Returns:
+        subsequent_mask (torch.Tensor): A causal mask for attention scores, of shape
+            (1, sequence_length, sequence_length).
+    """
+    attn_shape = (1, sequence_length, sequence_length)
     subsequent_mask = torch.triu(torch.ones(attn_shape), diagonal=1).type(torch.uint8)
     return subsequent_mask == 0
 
