@@ -1,6 +1,5 @@
 import torch
 
-
 class SinusoidalEmbedding:
     """
     A class that encodes numeric values as tokens. It relies on sinusoidal equations described in the original
@@ -11,7 +10,9 @@ class SinusoidalEmbedding:
         on the desired use case.
     """
 
-    def __init__(self, embedding_dimension):
+    def __init__(self,
+                 embedding_dimension: int
+                 ):
         """
         Args:
             embedding_dimension (int): The expected dimension size for each token embedding.
@@ -32,7 +33,10 @@ class SinusoidalPositionEmbedding(SinusoidalEmbedding):
     Child class of SinusoidalEmbedding that specifically encodes sequence position as a sinusoidal embedding.
     """
 
-    def __init__(self, embedding_dimension, max_len=5_000):
+    def __init__(self,
+                 embedding_dimension: int,
+                 max_len: int = 5_000
+                 ):
         """
         Args:
             embedding_dimension (int): See parent class.
@@ -50,7 +54,9 @@ class SinusoidalPositionEmbedding(SinusoidalEmbedding):
         self.positional_encoding[:, 0::2] = sin
         self.positional_encoding[:, 1::2] = cos
 
-    def __call__(self, x):
+    def __call__(self,
+                 x: torch.Tensor,
+                 ):
         """
         Args:
             x (torch.Tensor): The embedded input tensor, of shape (batch_size, seqeunce_length, embedding_dimension)
@@ -67,7 +73,10 @@ class SinusoidalCustomEmbedding(SinusoidalEmbedding):
     Child class of SinusoidalEmbedding that specifically encodes custom numeric input as a sinusoidal embedding.
     """
 
-    def __call__(self, x, custom_values):
+    def __call__(self,
+                 x: torch.Tensor,
+                 custom_values: torch.Tensor,
+                 ):
         """
         Args:
             x (torch.Tensor): The embedded input tensor, of shape (batch_size, seqeunce_length, embedding_dimension)

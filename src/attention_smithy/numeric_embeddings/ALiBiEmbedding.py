@@ -15,7 +15,9 @@ class ALiBiEmbedding:
         on the desired use case.
     """
 
-    def __init__(self, num_heads, slope_degree=2):
+    def __init__(self,
+                 num_heads: int,
+                 slope_degree: int = 2):
         """
         Args:
             num_heads (int): The expected number of heads used in multihead attention.
@@ -41,7 +43,10 @@ class ALiBiEmbedding:
         return slopes.view(num_heads, 1, 1)
 
 class ALiBiPositionEmbedding(ALiBiEmbedding):
-    def __call__(self, query_length, kv_length):
+    def __call__(self,
+                 query_length: int,
+                 kv_length: int,
+                 ):
         """
         Args:
             query_length (int): The sequence length of the query matrix
@@ -68,7 +73,10 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
         return purely_negative_distance_matrix * self.slope_m_values
 
 class ALiBiCustomEmbedding(ALiBiEmbedding):
-    def __call__(self, custom_query_values, custom_key_values):
+    def __call__(self,
+                 custom_query_values: torch.Tensor,
+                 custom_key_values: torch.Tensor,
+                 ):
         """
         Args:
             custom_query_values (torch.Tensor): The values corresponding to the query matrix that

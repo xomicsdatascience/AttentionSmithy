@@ -1,4 +1,7 @@
+import torch
 from torch import nn
+from typing import Union
+from attention_smithy.components import MultiheadAttention, FeedForwardNetwork
 
 class SublayerUnit(nn.Module):
     """
@@ -11,7 +14,11 @@ class SublayerUnit(nn.Module):
         process remains identical in all 5 instances. This class captures that
         repeated process.
     """
-    def __init__(self, sublayer_module, embedding_dimension, dropout):
+    def __init__(self,
+                 sublayer_module: Union[MultiheadAttention, FeedForwardNetwork],
+                 embedding_dimension: int,
+                 dropout: float
+                 ):
         """
         Args:
             sublayer_module (nn.Module child): A sublayer process in a transformer-based
@@ -27,7 +34,10 @@ class SublayerUnit(nn.Module):
         self.norm = nn.LayerNorm(embedding_dimension)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, **kwargs):
+    def forward(self,
+                x: torch.Tensor,
+                **kwargs
+                ):
         """
         Args:
             x (torch.Tensor): The tokenized input data of shape

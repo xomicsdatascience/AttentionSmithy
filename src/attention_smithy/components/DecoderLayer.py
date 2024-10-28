@@ -1,5 +1,6 @@
+import torch
 from torch import nn
-from attention_smithy.components import SublayerUnit
+from attention_smithy.components import SublayerUnit, MultiheadAttention, FeedForwardNetwork
 
 class DecoderLayer(nn.Module):
     """
@@ -9,7 +10,13 @@ class DecoderLayer(nn.Module):
         single cross attenion sublayer, followed by a feed forward network
         sublayer.
     """
-    def __init__(self, embedding_dimension, self_attention, cross_attention, feed_forward, dropout):
+    def __init__(self,
+                 embedding_dimension: int,
+                 self_attention: MultiheadAttention,
+                 cross_attention: MultiheadAttention,
+                 feed_forward: FeedForwardNetwork,
+                 dropout: float,
+                 ):
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -25,9 +32,13 @@ class DecoderLayer(nn.Module):
         self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)
         self.embedding_dimension = embedding_dimension
 
-    def forward(
-        self, tgt, src, tgt_padding_mask, src_padding_mask, **kwargs
-    ):
+    def forward(self,
+                tgt: torch.Tensor,
+                src: torch.Tensor,
+                tgt_padding_mask: torch.Tensor,
+                src_padding_mask: torch.Tensor,
+                **kwargs
+                ):
         """
         Args:
             tgt (torch.Tensor): The tokenized input, of shape

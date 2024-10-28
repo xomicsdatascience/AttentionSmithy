@@ -1,4 +1,14 @@
 import torch
+from typing import Union
+from attention_smithy.numeric_embeddings import (
+    ALiBiPositionEmbedding,
+    ALiBiCustomEmbedding,
+    LearnedEmbedding,
+    RotaryEmbedding,
+    SinusoidalPositionEmbedding,
+    SinusoidalCustomEmbedding,
+)
+
 
 class _NoAddEmbedding:
     """
@@ -11,7 +21,7 @@ class _PassthroughEmbedding:
     """
     Takes any input and returns the input.
     """
-    def __call__(self, x, *args, **kwargs):
+    def __call__(self, x: torch.Tensor, *args, **kwargs):
         return x
 
 class NumericEmbeddingFacade:
@@ -33,12 +43,12 @@ class NumericEmbeddingFacade:
         values instead, that option is available as well.
     """
     def __init__(self,
-                 sinusoidal_position=_NoAddEmbedding(),
-                 sinusoidal_custom=_NoAddEmbedding(),
-                 learned_position=_NoAddEmbedding(),
-                 rotary_position=_PassthroughEmbedding(),
-                 alibi_position=_NoAddEmbedding(),
-                 alibi_custom=_NoAddEmbedding(),
+                 sinusoidal_position: Union[_NoAddEmbedding, SinusoidalPositionEmbedding] = _NoAddEmbedding(),
+                 sinusoidal_custom: Union[_NoAddEmbedding, SinusoidalCustomEmbedding] = _NoAddEmbedding(),
+                 learned_position: Union[_NoAddEmbedding, LearnedEmbedding] = _NoAddEmbedding(),
+                 rotary_position: Union[_PassthroughEmbedding, RotaryEmbedding] = _PassthroughEmbedding(),
+                 alibi_position: Union[_NoAddEmbedding, ALiBiPositionEmbedding] = _NoAddEmbedding(),
+                 alibi_custom: Union[_NoAddEmbedding, ALiBiCustomEmbedding] = _NoAddEmbedding(),
                  ):
         """
         Args:
@@ -63,17 +73,31 @@ class NumericEmbeddingFacade:
         self.alibi_position = alibi_position
         self.alibi_custom = alibi_custom
 
-    def calculate_sinusoidal_and_learned_tokenizations(self, x, sinusoidal_custom_values=None, learned_values=None, **kwargs):
+    def calculate_sinusoidal_and_learned_tokenizations(self,
+                                                       x: torch.Tensor,
+                                                       sinusoidal_custom_values: torch.Tensor=None,
+                                                       learned_values: torch.Tensor=None,
+                                                       **kwargs
+                                                       ):
         output = torch.zeros_like(x)
         output += self.sinusoidal_position(x)
         output += self.sinusoidal_custom(x, sinusoidal_custom_values)
         output += self.learned_position(learned_values)
         return output
 
-    def apply_rotation_to_query_and_key_matrices(self, query, key):
+    def apply_rotation_to_query_and_key_matrices(self,
+                                                 query: torch.Tensor,
+                                                 key: torch.Tensor,
+                                                 ):
         return self.rotary_position(query), self.rotary_position(key)
 
-    def calculate_alibi_attention_score_distances(self, query, key, alibi_query_values=None, alibi_key_values=None, **kwargs):
+    def calculate_alibi_attention_score_distances(self,
+                                                  query: torch.Tensor,
+                                                  key: torch.Tensor,
+                                                  alibi_query_values: torch.Tensor = None,
+                                                  alibi_key_values: torch.Tensor = None,
+                                                  **kwargs
+                                                  ):
         batch_size, num_heads, query_sequence_length, _ = query.shape
         _, _, key_sequence_length, _ = key.shape
         output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length))

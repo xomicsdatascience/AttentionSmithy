@@ -1,5 +1,6 @@
+import torch
 from torch import nn
-from attention_smithy.components import SublayerUnit
+from attention_smithy.components import SublayerUnit, MultiheadAttention, FeedForwardNetwork
 
 class EncoderLayer(nn.Module):
     """
@@ -8,7 +9,12 @@ class EncoderLayer(nn.Module):
         an encoder layer is a single self attention sublayer followed by a feed
         forward network sublayer.
     """
-    def __init__(self, embedding_dimension, self_attention, feed_forward, dropout):
+    def __init__(self,
+                 embedding_dimension: int,
+                 self_attention: MultiheadAttention,
+                 feed_forward: FeedForwardNetwork,
+                 dropout: float,
+                 ):
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -23,9 +29,11 @@ class EncoderLayer(nn.Module):
         self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)
         self.embedding_dimension = embedding_dimension
 
-    def forward(
-        self, src, src_padding_mask, **kwargs
-    ):
+    def forward(self,
+                src: torch.Tensor,
+                src_padding_mask: torch.Tensor,
+                **kwargs
+                ):
         """
         Args:
             src (torch.Tensor): The tokenized input, of shape

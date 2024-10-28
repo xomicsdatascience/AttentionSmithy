@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from attention_smithy.utils import create_causal_mask
-
+from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
 
 class StandardAttentionMethod(nn.Module):
     """
@@ -11,7 +11,9 @@ class StandardAttentionMethod(nn.Module):
         through this module.
     """
 
-    def __init__(self, dropout: float = 0.0, is_causal_masking: bool = False):
+    def __init__(self,
+                 dropout: float = 0.0,
+                 is_causal_masking: bool = False):
         """
         Initializes the standard attention module.
 
@@ -27,11 +29,11 @@ class StandardAttentionMethod(nn.Module):
 
     def forward(
         self,
-        q,
-        k,
-        v,
-        numeric_embedding_facade,
-        padding_and_loss_attention_mask,
+        q: torch.Tensor,
+        k: torch.Tensor,
+        v: torch.Tensor,
+        numeric_embedding_facade: NumericEmbeddingFacade,
+        padding_and_loss_attention_mask: torch.Tensor,
         **kwargs,
     ):
         """

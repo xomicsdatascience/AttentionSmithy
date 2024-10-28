@@ -1,5 +1,7 @@
+import torch
 from torch import nn
 from attention_smithy.utils import repeat_module_consecutively
+from attention_smithy.components import DecoderLayer
 
 class Decoder(nn.Module):
     """
@@ -8,7 +10,10 @@ class Decoder(nn.Module):
         running data through each decoder layer.
 
     """
-    def __init__(self, layer, number_of_layers):
+    def __init__(self,
+                 layer: DecoderLayer,
+                 number_of_layers: int,
+                 ):
         """
         Args:
             layer (DecoderLayer): An instance of the DecoderLayer class.
@@ -20,7 +25,13 @@ class Decoder(nn.Module):
         self.layers = repeat_module_consecutively(layer, number_of_layers)
         self.norm = nn.LayerNorm(layer.embedding_dimension)
 
-    def forward(self, tgt, src, tgt_padding_mask, src_padding_mask, **kwargs):
+    def forward(self,
+                tgt: torch.Tensor,
+                src: torch.Tensor,
+                tgt_padding_mask: torch.Tensor,
+                src_padding_mask: torch.Tensor,
+                **kwargs
+                ):
         """
         See args and return value of DecoderLayer forward function
         """

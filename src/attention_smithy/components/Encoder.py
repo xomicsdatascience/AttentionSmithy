@@ -1,5 +1,7 @@
+import torch
 from torch import nn
 from attention_smithy.utils import repeat_module_consecutively
+from attention_smithy.components import EncoderLayer
 
 class Encoder(nn.Module):
     """
@@ -8,7 +10,10 @@ class Encoder(nn.Module):
         running data through each encoder layer.
 
     """
-    def __init__(self, layer, number_of_layers):
+    def __init__(self,
+                 layer: EncoderLayer,
+                 number_of_layers: int,
+                 ):
         """
         Args:
             layer (EncoderLayer): An instance of the EncoderLayer class.
@@ -20,7 +25,11 @@ class Encoder(nn.Module):
         self.layers = repeat_module_consecutively(layer, number_of_layers)
         self.norm = nn.LayerNorm(layer.embedding_dimension)
 
-    def forward(self, src, src_padding_mask, **kwargs):
+    def forward(self,
+                src: torch.Tensor,
+                src_padding_mask: torch.Tensor,
+                **kwargs
+                ):
         """
         See args and return value of EncoderLayer forward function
         """

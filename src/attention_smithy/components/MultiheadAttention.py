@@ -1,4 +1,8 @@
+import torch
 import torch.nn as nn
+from typing import Union
+from attention_smithy.attention import BigBirdAttentionMethod, StandardAttentionMethod
+from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
 
 class MultiheadAttention(nn.Module):
     """
@@ -15,7 +19,12 @@ class MultiheadAttention(nn.Module):
         remain constant.
     """
 
-    def __init__(self, embedding_dimension, number_of_heads, attention_method, **kwargs):
+    def __init__(self,
+                 embedding_dimension: int,
+                 number_of_heads: int,
+                 attention_method: Union[BigBirdAttentionMethod, StandardAttentionMethod],
+                 **kwargs
+                 ):
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -40,7 +49,12 @@ class MultiheadAttention(nn.Module):
         self.value_weights = nn.Linear(embedding_dimension, embedding_dimension)
         self.out_weights = nn.Linear(embedding_dimension, embedding_dimension)
 
-    def forward(self, input_query, input_key, input_value, numeric_embedding_facade, **kwargs):
+    def forward(self,
+                input_query: torch.Tensor,
+                input_key: torch.Tensor,
+                input_value: torch.Tensor,
+                numeric_embedding_facade: NumericEmbeddingFacade,
+                **kwargs):
         """
         Args:
             input_query (torch.Tensor): The tokenized input meant to be analyzed as the

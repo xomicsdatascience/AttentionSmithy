@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 from attention_smithy.utils import select_activation_function_module
 
@@ -6,7 +7,12 @@ class FeedForwardNetwork(nn.Module):
     The feed forward component of encoder and decoder layers of a transformer, as described in
         the original paper "Attention Is All You Need."
     """
-    def __init__(self, embedding_dimension, feed_forward_dimension, activation_function_string, dropout=0.1):
+    def __init__(self,
+                 embedding_dimension: int,
+                 feed_forward_dimension: int,
+                 activation_function_string: str,
+                 dropout: float = 0.1
+                 ):
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -23,7 +29,9 @@ class FeedForwardNetwork(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.activation = select_activation_function_module(activation_function_string)
 
-    def forward(self, x):
+    def forward(self,
+                x: torch.Tensor,
+                ):
         """
         Args:
             x (torch.Tensor): The tokenized data input, of shape

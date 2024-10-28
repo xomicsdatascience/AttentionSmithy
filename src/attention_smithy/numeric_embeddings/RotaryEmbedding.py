@@ -12,7 +12,9 @@ class RotaryEmbedding:
     NOTE: This is largely performed with an external package, rotary_embedding_torch.
     """
 
-    def __init__(self, head_dimension):
+    def __init__(self,
+                 head_dimension: int
+                 ):
         """
         Initializes the embedding class.
 
@@ -22,7 +24,11 @@ class RotaryEmbedding:
 
         self.rotary = RotaryEmbeddingTorch(dim=head_dimension)
 
-    def __call__(self, input, *args, **kwargs):
+    def __call__(self,
+                 input: torch.Tensor,
+                 *args,
+                 **kwargs
+                 ):
         """
         Args:
             input (torch.Tensor): An input query or key watrix, of shape
