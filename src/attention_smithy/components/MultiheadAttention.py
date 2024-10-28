@@ -44,14 +44,17 @@ class MultiheadAttention(nn.Module):
         """
         Args:
             input_query (torch.Tensor): The tokenized input meant to be analyzed as the
-                "query" matrix described in the original paper.
+                "query" matrix described in the original paper, of shape
+                (batch_size, query_sequence_length, embedding_dimension)
             input_key (torch.Tensor): The tokenized input meant to be analyzed as the
-                "key" matrix described in the original paper.
+                "key" matrix described in the original paper, of shape
+                (batch_size, kv_sequence_length, embedding_dimension)
             input_value (torch.Tensor): The tokenized input meant to be analyzed as the
-                "value" matrix described in the original paper.
+                "value" matrix described in the original paper, of shape
+                (batch_size, kv_sequence_length, embedding_dimension)
             numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
                 all numeric embedding methods (including position). Required to enable
-                rotary ombedding.
+                rotary embedding.
         Returns:
             attention_outputs (torch.Tensor): The output tensor, of shape
                 (batch_size, query_length, embedding_dimension).

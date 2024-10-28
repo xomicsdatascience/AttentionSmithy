@@ -93,7 +93,7 @@ class BigBirdAttentionMethod(nn.Module):
         q: torch.Tensor,
         k: torch.Tensor,
         v: torch.Tensor,
-        positional_embedding,
+        numeric_embedding_facade,
         global_tokens_query: torch.Tensor,
         global_tokens_kv: torch.Tensor,
         padding_attention_mask: torch.Tensor = None,
@@ -103,15 +103,21 @@ class BigBirdAttentionMethod(nn.Module):
         Forward pass of the Big Bird attention module.
 
         Args:
-            q (torch.Tensor): The query tensor embedding.
-            k (torch.Tensor): The key tensor embedding.
-            v (torch.Tensor): The value tensor embedding.
-            positional_embedding (attention_smithy.PositionalEmbedding): Class that facilitates positional embeddings.
+            q (torch.Tensor): The query tensor embedding, of shape
+                (batch_size, number_of_heads, query_sequence_length, head_dimension)
+            k (torch.Tensor): The key tensor embedding, of shape
+                (batch_size, number_of_heads, kv_sequence_length, head_dimension)
+            v (torch.Tensor): The value tensor embedding, of shape
+                (batch_size, number_of_heads, kv_sequence_length, head_dimension)
+            numeric_embedding_facade (NumericEmbeddingFacade): Class that facilitates positional embeddings.
                 TODO: Not currently used in Big Bird Attention. Would apply for ALiBi and Relative positional
                 embeddings.
-            global_tokens_query (torch.Tensor): A mask for the query tensor marking global tokens.
-            global_tokens_kv (torch.Tensor): A mask for the key and value tensors marking global tokens.
-            padding_attention_mask (torch.Tensor): The padding attention mask. Defaults to None.
+            global_tokens_query (torch.Tensor): A mask for the query tensor marking global tokens, of shape
+                (batch_size, query_sequence_length)
+            global_tokens_kv (torch.Tensor): A mask for the key and value tensors marking global tokens, of shape
+                (batch_size, kv_sequence_length)
+            padding_attention_mask (torch.Tensor, optional): The padding attention mask, of shape
+                (batch_size, kv_sequence_length). Defaults to None (no padding)
             kv_index_table (torch.Tensor): Used for testing purposes only. Represents the direct index of blocks to
                 be used for attention. Each row length corresponds to the number of sparse query blocks. The number
                 of rows corresponds to the number of kv blocks. Duplicate blocks are calculated, but then only one

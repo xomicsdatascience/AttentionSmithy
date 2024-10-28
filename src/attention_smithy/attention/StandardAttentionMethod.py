@@ -44,7 +44,7 @@ class StandardAttentionMethod(nn.Module):
             v (torch.Tensor): The value tensor embedding, of shape (batch_size, num_heads, kv_length, head_dim)
             numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
                 all numeric embedding methods (including position). Required to enable
-                alibi ombedding.
+                alibi embedding.
             padding_and_loss_attention_mask (torch.Tensor): A boolean mask corresponding to padding tokens in the query
                 and key inputs, of shape (batch_size, 1, query_length, kv_length).
                 NOTE: tokens are often masked to pad samples to match the largest sample in a batch to keep
