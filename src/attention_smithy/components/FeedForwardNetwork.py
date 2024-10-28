@@ -12,7 +12,7 @@ class FeedForwardNetwork(nn.Module):
                  feed_forward_dimension: int,
                  activation_function_string: str,
                  dropout: float = 0.1
-                 ):
+                 ) -> None:
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -31,7 +31,7 @@ class FeedForwardNetwork(nn.Module):
 
     def forward(self,
                 x: torch.Tensor,
-                ):
+                ) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): The tokenized data input, of shape

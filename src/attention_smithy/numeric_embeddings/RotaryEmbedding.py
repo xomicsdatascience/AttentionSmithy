@@ -14,7 +14,7 @@ class RotaryEmbedding:
 
     def __init__(self,
                  head_dimension: int
-                 ):
+                 ) -> None:
         """
         Initializes the embedding class.
 
@@ -28,7 +28,7 @@ class RotaryEmbedding:
                  input: torch.Tensor,
                  *args,
                  **kwargs
-                 ):
+                 ) -> torch.Tensor:
         """
         Args:
             input (torch.Tensor): An input query or key watrix, of shape

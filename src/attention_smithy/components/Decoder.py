@@ -13,7 +13,7 @@ class Decoder(nn.Module):
     def __init__(self,
                  layer: DecoderLayer,
                  number_of_layers: int,
-                 ):
+                 ) -> None:
         """
         Args:
             layer (DecoderLayer): An instance of the DecoderLayer class.
@@ -31,7 +31,7 @@ class Decoder(nn.Module):
                 tgt_padding_mask: torch.Tensor,
                 src_padding_mask: torch.Tensor,
                 **kwargs
-                ):
+                ) -> torch.Tensor:
         """
         See args and return value of DecoderLayer forward function
         """

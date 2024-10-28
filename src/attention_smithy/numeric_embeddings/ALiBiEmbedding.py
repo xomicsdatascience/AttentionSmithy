@@ -17,7 +17,8 @@ class ALiBiEmbedding:
 
     def __init__(self,
                  num_heads: int,
-                 slope_degree: int = 2):
+                 slope_degree: int = 2
+                 ) -> None:
         """
         Args:
             num_heads (int): The expected number of heads used in multihead attention.
@@ -46,7 +47,7 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
     def __call__(self,
                  query_length: int,
                  kv_length: int,
-                 ):
+                 ) -> torch.Tensor:
         """
         Args:
             query_length (int): The sequence length of the query matrix
@@ -76,7 +77,7 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
     def __call__(self,
                  custom_query_values: torch.Tensor,
                  custom_key_values: torch.Tensor,
-                 ):
+                 ) -> torch.Tensor:
         """
         Args:
             custom_query_values (torch.Tensor): The values corresponding to the query matrix that

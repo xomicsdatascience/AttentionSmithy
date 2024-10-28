@@ -16,7 +16,7 @@ class DecoderLayer(nn.Module):
                  cross_attention: MultiheadAttention,
                  feed_forward: FeedForwardNetwork,
                  dropout: float,
-                 ):
+                 ) -> None:
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -38,7 +38,7 @@ class DecoderLayer(nn.Module):
                 tgt_padding_mask: torch.Tensor,
                 src_padding_mask: torch.Tensor,
                 **kwargs
-                ):
+                ) -> torch.Tensor:
         """
         Args:
             tgt (torch.Tensor): The tokenized input, of shape

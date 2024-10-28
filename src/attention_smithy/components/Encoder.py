@@ -13,7 +13,7 @@ class Encoder(nn.Module):
     def __init__(self,
                  layer: EncoderLayer,
                  number_of_layers: int,
-                 ):
+                 ) -> None:
         """
         Args:
             layer (EncoderLayer): An instance of the EncoderLayer class.
@@ -29,7 +29,7 @@ class Encoder(nn.Module):
                 src: torch.Tensor,
                 src_padding_mask: torch.Tensor,
                 **kwargs
-                ):
+                ) -> torch.Tensor:
         """
         See args and return value of EncoderLayer forward function
         """

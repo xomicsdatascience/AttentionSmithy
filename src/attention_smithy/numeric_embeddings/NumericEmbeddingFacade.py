@@ -49,7 +49,7 @@ class NumericEmbeddingFacade:
                  rotary_position: Union[_PassthroughEmbedding, RotaryEmbedding] = _PassthroughEmbedding(),
                  alibi_position: Union[_NoAddEmbedding, ALiBiPositionEmbedding] = _NoAddEmbedding(),
                  alibi_custom: Union[_NoAddEmbedding, ALiBiCustomEmbedding] = _NoAddEmbedding(),
-                 ):
+                 ) -> None:
         """
         Args:
             sinusoidalPosition: SinusoidalPositionEmbedding() instance. If not set,
@@ -78,7 +78,7 @@ class NumericEmbeddingFacade:
                                                        sinusoidal_custom_values: torch.Tensor=None,
                                                        learned_values: torch.Tensor=None,
                                                        **kwargs
-                                                       ):
+                                                       ) -> torch.Tensor:
         output = torch.zeros_like(x)
         output += self.sinusoidal_position(x)
         output += self.sinusoidal_custom(x, sinusoidal_custom_values)
@@ -88,7 +88,7 @@ class NumericEmbeddingFacade:
     def apply_rotation_to_query_and_key_matrices(self,
                                                  query: torch.Tensor,
                                                  key: torch.Tensor,
-                                                 ):
+                                                 ) -> torch.Tensor:
         return self.rotary_position(query), self.rotary_position(key)
 
     def calculate_alibi_attention_score_distances(self,
@@ -97,7 +97,7 @@ class NumericEmbeddingFacade:
                                                   alibi_query_values: torch.Tensor = None,
                                                   alibi_key_values: torch.Tensor = None,
                                                   **kwargs
-                                                  ):
+                                                  ) -> torch.Tensor:
         batch_size, num_heads, query_sequence_length, _ = query.shape
         _, _, key_sequence_length, _ = key.shape
         output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length))

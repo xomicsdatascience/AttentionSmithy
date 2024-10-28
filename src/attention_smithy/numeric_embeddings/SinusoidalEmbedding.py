@@ -12,7 +12,7 @@ class SinusoidalEmbedding:
 
     def __init__(self,
                  embedding_dimension: int
-                 ):
+                 ) -> None:
         """
         Args:
             embedding_dimension (int): The expected dimension size for each token embedding.
@@ -36,7 +36,7 @@ class SinusoidalPositionEmbedding(SinusoidalEmbedding):
     def __init__(self,
                  embedding_dimension: int,
                  max_len: int = 5_000
-                 ):
+                 ) -> None:
         """
         Args:
             embedding_dimension (int): See parent class.
@@ -56,7 +56,7 @@ class SinusoidalPositionEmbedding(SinusoidalEmbedding):
 
     def __call__(self,
                  x: torch.Tensor,
-                 ):
+                 ) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): The embedded input tensor, of shape (batch_size, seqeunce_length, embedding_dimension)
@@ -76,7 +76,7 @@ class SinusoidalCustomEmbedding(SinusoidalEmbedding):
     def __call__(self,
                  x: torch.Tensor,
                  custom_values: torch.Tensor,
-                 ):
+                 ) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): The embedded input tensor, of shape (batch_size, seqeunce_length, embedding_dimension)

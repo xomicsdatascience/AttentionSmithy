@@ -24,7 +24,7 @@ class MultiheadAttention(nn.Module):
                  number_of_heads: int,
                  attention_method: Union[BigBirdAttentionMethod, StandardAttentionMethod],
                  **kwargs
-                 ):
+                 ) -> None:
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -54,7 +54,8 @@ class MultiheadAttention(nn.Module):
                 input_key: torch.Tensor,
                 input_value: torch.Tensor,
                 numeric_embedding_facade: NumericEmbeddingFacade,
-                **kwargs):
+                **kwargs
+                ) -> torch.Tensor:
         """
         Args:
             input_query (torch.Tensor): The tokenized input meant to be analyzed as the

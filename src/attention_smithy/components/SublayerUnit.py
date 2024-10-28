@@ -18,7 +18,7 @@ class SublayerUnit(nn.Module):
                  sublayer_module: Union[MultiheadAttention, FeedForwardNetwork],
                  embedding_dimension: int,
                  dropout: float
-                 ):
+                 ) -> None:
         """
         Args:
             sublayer_module (nn.Module child): A sublayer process in a transformer-based

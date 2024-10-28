@@ -9,7 +9,7 @@ class LearnedEmbedding(nn.Module):
                  vocab_size: int,
                  embedding_dimension: int,
                  padding_idx: int = 0
-                 ):
+                 ) -> None:
         """
         Args:
             vocab_size (int): The number of values in the expected vocabulary.
@@ -23,7 +23,7 @@ class LearnedEmbedding(nn.Module):
 
     def forward(self,
                 x: torch.Tensor,
-                ):
+                ) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): An input tensor of values to be encoded, of shape
