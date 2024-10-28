@@ -23,8 +23,15 @@ def test__Decoder():
     number_of_layers = 2
     decoder_layer = DecoderLayer(embedding_dimension, standard_multihead_attention, standard_multihead_attention, feed_forward_network, dropout)
     decoder = Decoder(decoder_layer, number_of_layers)
+    assert not torch.equal(decoder.layers[0].self_attention_sublayer.sublayer_module.query_weights.weight, decoder.layers[1].self_attention_sublayer.sublayer_module.query_weights.weight)
+    assert not torch.equal(decoder.layers[0].self_attention_sublayer.sublayer_module.key_weights.weight, decoder.layers[1].self_attention_sublayer.sublayer_module.key_weights.weight)
+    assert not torch.equal(decoder.layers[0].self_attention_sublayer.sublayer_module.value_weights.weight, decoder.layers[1].self_attention_sublayer.sublayer_module.value_weights.weight)
+    assert not torch.equal(decoder.layers[0].self_attention_sublayer.sublayer_module.out_weights.weight, decoder.layers[1].self_attention_sublayer.sublayer_module.out_weights.weight)
+
+
 
     input_tensor = torch.rand((batch_size, sequence_length, embedding_dimension))
     numeric_embedding_facade = NumericEmbeddingFacade()
     output = decoder(input_tensor, input_tensor, tgt_padding_mask=None, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
+
     assert input_tensor.shape == output.shape

@@ -5,10 +5,15 @@ import torch
 from torch import nn
 import copy
 
+def repeat_module_consecutively(module, number_of_repeats):
+    modules = nn.ModuleList([copy.deepcopy(module) for _ in range(number_of_repeats)])
+    _reset_all_copied_initial_weights(modules)
+    return modules
 
-def clone_module_consecutively(module, N):
-    return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
-
+def _reset_all_copied_initial_weights(modules):
+    for _, submodule in modules.named_modules():
+        if hasattr(submodule, 'reset_parameters'):
+            submodule.reset_parameters()
 
 def seed_everything(seed: int):
     random.seed(seed)

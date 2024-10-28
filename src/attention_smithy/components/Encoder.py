@@ -1,5 +1,5 @@
 from torch import nn
-from attention_smithy.utils import clone_module_consecutively
+from attention_smithy.utils import repeat_module_consecutively
 
 class Encoder(nn.Module):
     """
@@ -17,7 +17,7 @@ class Encoder(nn.Module):
                 should be duplicated throughout the encoder.
         """
         super().__init__()
-        self.layers = clone_module_consecutively(layer, number_of_layers)
+        self.layers = repeat_module_consecutively(layer, number_of_layers)
         self.norm = nn.LayerNorm(layer.embedding_dimension)
 
     def forward(self, src, src_padding_mask, **kwargs):

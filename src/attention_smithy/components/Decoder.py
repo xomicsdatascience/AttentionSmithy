@@ -1,5 +1,5 @@
 from torch import nn
-from attention_smithy.utils import clone_module_consecutively
+from attention_smithy.utils import repeat_module_consecutively
 
 class Decoder(nn.Module):
     """
@@ -17,7 +17,7 @@ class Decoder(nn.Module):
                 should be duplicated throughout the decoder.
         """
         super().__init__()
-        self.layers = clone_module_consecutively(layer, number_of_layers)
+        self.layers = repeat_module_consecutively(layer, number_of_layers)
         self.norm = nn.LayerNorm(layer.embedding_dimension)
 
     def forward(self, tgt, src, tgt_padding_mask, src_padding_mask, **kwargs):

@@ -23,6 +23,10 @@ def test__Encoder():
     number_of_layers = 2
     encoder_layer = EncoderLayer(embedding_dimension, standard_multihead_attention, feed_forward_network, dropout)
     encoder = Encoder(encoder_layer, number_of_layers)
+    assert not torch.equal(encoder.layers[0].self_attention_sublayer.sublayer_module.query_weights.weight, encoder.layers[1].self_attention_sublayer.sublayer_module.query_weights.weight)
+    assert not torch.equal(encoder.layers[0].self_attention_sublayer.sublayer_module.key_weights.weight, encoder.layers[1].self_attention_sublayer.sublayer_module.key_weights.weight)
+    assert not torch.equal(encoder.layers[0].self_attention_sublayer.sublayer_module.value_weights.weight, encoder.layers[1].self_attention_sublayer.sublayer_module.value_weights.weight)
+    assert not torch.equal(encoder.layers[0].self_attention_sublayer.sublayer_module.out_weights.weight, encoder.layers[1].self_attention_sublayer.sublayer_module.out_weights.weight)
 
     input_tensor = torch.rand((batch_size, sequence_length, embedding_dimension))
     numeric_embedding_facade = NumericEmbeddingFacade()
