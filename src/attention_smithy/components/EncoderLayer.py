@@ -22,9 +22,10 @@ class EncoderLayer(nn.Module):
         super().__init__()
         self.self_attention_sublayer = SublayerUnit(self_attention, embedding_dimension, dropout)
         self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)
+        self.embedding_dimension = embedding_dimension
 
     def forward(
-        self, src, src_padding_mask, numeric_embedding_facade, **kwargs
+        self, src, src_padding_mask, **kwargs
     ):
         """
         Args:
@@ -33,8 +34,8 @@ class EncoderLayer(nn.Module):
                 name is used in encoder/decoder contexts to represent "source" data
                 as opposed to "target" data, as in translating English (source) to
                 French (target). Because this is an encoder, there is only "src" data.
-            numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
-                all numeric embedding methods (including position).
+            src_padding_mask (torch.tensor): The padding attention mask, of shape
+                (batch_size, kv_sequence_length).
             kwargs: Customized components downstream may require additional inputs.
                 This argument effectively packages them together for use downstream.
                 For example, the BigBirdAttentionMethod requires additional masking
@@ -50,7 +51,6 @@ class EncoderLayer(nn.Module):
             input_key=src,
             input_value=src,
             padding_and_loss_attention_mask=src_padding_mask,
-            numeric_embedding_facade=numeric_embedding_facade,
             **kwargs,
         )
         return self.feed_forward_sublayer(query)
