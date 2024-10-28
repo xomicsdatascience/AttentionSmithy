@@ -82,7 +82,7 @@ def global_tokens_query(batch_size, num_blocks_query, block_size):
 def global_tokens_kv(batch_size, num_blocks_kv, block_size):
     return torch.zeros((batch_size, num_blocks_kv*block_size))
 
-def test__EncoderLayer__works_with_standard_self_attention(query_tensor, kv_tensor, numeric_embedding_facade, standard_decoder_layer):
+def test__DecoderLayer__works_with_standard_self_attention(query_tensor, kv_tensor, numeric_embedding_facade, standard_decoder_layer):
     output = standard_decoder_layer(tgt=query_tensor, src=kv_tensor, tgt_padding_mask=None, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
     assert output.shape == query_tensor.shape
 
