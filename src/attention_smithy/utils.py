@@ -5,17 +5,24 @@ import torch
 from torch import nn
 import copy
 
-def repeat_module_consecutively(module, number_of_repeats):
+def repeat_module_consecutively(
+        module: nn.Module,
+        number_of_repeats: int,
+) -> nn.ModuleList:
     modules = nn.ModuleList([copy.deepcopy(module) for _ in range(number_of_repeats)])
     _reset_all_copied_initial_weights(modules)
     return modules
 
-def _reset_all_copied_initial_weights(modules):
+def _reset_all_copied_initial_weights(
+        modules: nn.ModuleList,
+) -> nn.ModuleList:
     for _, submodule in modules.named_modules():
         if hasattr(submodule, 'reset_parameters'):
             submodule.reset_parameters()
 
-def seed_everything(seed: int):
+def seed_everything(
+        seed: int,
+) -> None:
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
@@ -26,7 +33,9 @@ def seed_everything(seed: int):
     torch.backends.cudnn.benchmark = True
 
 
-def create_causal_mask(sequence_length):
+def create_causal_mask(
+        sequence_length: int,
+) -> torch.Tensor:
     """
     Creates a boolean tensor where values above the diagonal are False, all others
         are True. This creates a "causal" mask in attention that prevents tokens
@@ -47,7 +56,9 @@ def create_causal_mask(sequence_length):
     return subsequent_mask == 0
 
 
-def select_activation_function_module(activation_param):
+def select_activation_function_module(
+        activation_param: str,
+) -> nn.Module:
     if activation_param == "leaky_relu_steep":
         return nn.LeakyReLU(negative_slope=0.1)
     elif activation_param == "leaky_relu_slight":
