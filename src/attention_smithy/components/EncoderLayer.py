@@ -6,8 +6,7 @@ class EncoderLayer(nn.Module):
     A single encoder layer as described in the Attention is All You Need paper.
         Most encoder models generally have multiple layers. The composition of
         an encoder layer is a single self attention sublayer followed by a feed
-        forward network sublayer. Inputs are fed through both and the encoded
-        outputs are returned.
+        forward network sublayer.
     """
     def __init__(self, embedding_dimension, self_attention, feed_forward, dropout):
         """
@@ -30,12 +29,12 @@ class EncoderLayer(nn.Module):
         """
         Args:
             src (torch.Tensor): The tokenized input, of shape
-                (batch_size, kv_sequence_length, embedding_dimension). The "src"
+                (batch_size, sequence_length, embedding_dimension). The "src"
                 name is used in encoder/decoder contexts to represent "source" data
                 as opposed to "target" data, as in translating English (source) to
                 French (target). Because this is an encoder, there is only "src" data.
             src_padding_mask (torch.tensor): The padding attention mask, of shape
-                (batch_size, kv_sequence_length).
+                (batch_size, sequence_length).
             kwargs: Customized components downstream may require additional inputs.
                 This argument effectively packages them together for use downstream.
                 For example, the BigBirdAttentionMethod requires additional masking
@@ -44,13 +43,13 @@ class EncoderLayer(nn.Module):
                 parameters.
         Returns:
             torch.Tensor: An output tensor of shape
-                (batch_size, query_sequence_length, embedding_dimension).
+                (batch_size, sequence_length, embedding_dimension).
         """
-        query = self.self_attention_sublayer(
+        src = self.self_attention_sublayer(
             src,
             input_key=src,
             input_value=src,
             padding_and_loss_attention_mask=src_padding_mask,
             **kwargs,
         )
-        return self.feed_forward_sublayer(query)
+        return self.feed_forward_sublayer(src)

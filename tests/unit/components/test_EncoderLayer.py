@@ -6,11 +6,11 @@ from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
 
 @pytest.fixture
 def embedding_dimension():
-    return 1200
+    return 120
 
 @pytest.fixture
 def feed_forward_dimension():
-    return 2000
+    return 200
 
 @pytest.fixture
 def batch_size():
@@ -25,7 +25,7 @@ def block_size():
     return 4
 
 @pytest.fixture
-def query_tensor(batch_size, embedding_dimension, num_blocks, block_size):
+def input_tensor(batch_size, embedding_dimension, num_blocks, block_size):
     sequence_length = num_blocks * block_size
     return torch.rand((batch_size, sequence_length, embedding_dimension))
 
@@ -68,16 +68,16 @@ def big_bird_encoder_layer(embedding_dimension, big_bird_multihead_attention, fe
 def global_tokens(batch_size, num_blocks, block_size):
     return torch.zeros((batch_size, num_blocks*block_size))
 
-def test__EncoderLayer__works_with_standard_self_attention(query_tensor, numeric_embedding_facade, standard_encoder_layer):
-    output = standard_encoder_layer(src=query_tensor, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
-    assert output.shape == query_tensor.shape
+def test__EncoderLayer__works_with_standard_self_attention(input_tensor, numeric_embedding_facade, standard_encoder_layer):
+    output = standard_encoder_layer(src=input_tensor, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
+    assert output.shape == input_tensor.shape
 
-def test__EncoderLayer__works_with_big_bird_self_attention(query_tensor, numeric_embedding_facade, big_bird_encoder_layer, global_tokens):
+def test__EncoderLayer__works_with_big_bird_self_attention(input_tensor, numeric_embedding_facade, big_bird_encoder_layer, global_tokens):
     output = big_bird_encoder_layer(
-        src=query_tensor,
+        src=input_tensor,
         src_padding_mask=None,
         numeric_embedding_facade=numeric_embedding_facade,
         global_tokens_query=global_tokens,
         global_tokens_kv=global_tokens,
     )
-    assert output.shape == query_tensor.shape
+    assert output.shape == input_tensor.shape
