@@ -24,20 +24,15 @@ class EncoderLayer(nn.Module):
         self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)
 
     def forward(
-        self, query, src, numeric_embedding_facade, **kwargs
+        self, src, src_padding_mask, numeric_embedding_facade, **kwargs
     ):
         """
         Args:
-            query (torch.Tensor): The tokenized input meant to be analyzed as the
-                "query" matrix described in the original paper, of shape
-                (batch_size, query_sequence_length, embedding_dimension). It
-                is also called the "target" or "tgt" matrix.
-            src (torch.Tensor): The tokenized input meant to be analyzed as the
-                "key" and "value" matrix described in the original paper, of shape
+            src (torch.Tensor): The tokenized input, of shape
                 (batch_size, kv_sequence_length, embedding_dimension). The "src"
                 name is used in encoder/decoder contexts to represent "source" data
                 as opposed to "target" data, as in translating English (source) to
-                French (target).
+                French (target). Because this is an encoder, there is only "src" data.
             numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
                 all numeric embedding methods (including position).
             kwargs: Customized components downstream may require additional inputs.
@@ -51,9 +46,10 @@ class EncoderLayer(nn.Module):
                 (batch_size, query_sequence_length, embedding_dimension).
         """
         query = self.self_attention_sublayer(
-            query,
+            src,
             input_key=src,
             input_value=src,
+            padding_and_loss_attention_mask=src_padding_mask,
             numeric_embedding_facade=numeric_embedding_facade,
             **kwargs,
         )

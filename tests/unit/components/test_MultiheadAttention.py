@@ -47,7 +47,7 @@ def test__MultiheadAttention__forward_pass_output_has_correct_shape_and_back_pro
 
     expected_output_shape = input_query.shape
     expected_attention_probabilities_shape = torch.Size([batch_size, number_of_heads, query_and_kv_sequence_length, query_and_kv_sequence_length])
-    output, attention_probabilities = multihead_attention(input_query, input_key, input_value, numeric_embedding_facade)
+    output, attention_probabilities = multihead_attention(input_query, input_key, input_value, padding_and_loss_attention_mask=None, numeric_embedding_facade=numeric_embedding_facade)
     assert output.shape == expected_output_shape
     assert attention_probabilities.shape == expected_attention_probabilities_shape
 
@@ -71,7 +71,7 @@ def test__MultiheadAttention__multihead_attention_still_works_when_query_and_key
 
     expected_output_shape = input_query.shape
     expected_attention_probabilities_shape = torch.Size([batch_size, number_of_heads, query_sequence_length, kv_sequence_length])
-    output, attention_probabilities = multihead_attention(input_query, input_key, input_value, numeric_embedding_facade)
+    output, attention_probabilities = multihead_attention(input_query, input_key, input_value, padding_and_loss_attention_mask=None, numeric_embedding_facade=numeric_embedding_facade)
     assert output.shape == expected_output_shape
     assert attention_probabilities.shape == expected_attention_probabilities_shape
 
@@ -85,6 +85,6 @@ def test__MultiheadAttention__forward_pass_output_has_correct_shape__with_rotary
 
     expected_output_shape = input_query.shape
     expected_attention_probabilities_shape = torch.Size([batch_size, number_of_heads, query_and_kv_sequence_length, query_and_kv_sequence_length])
-    output, attention_probabilities = multihead_attention(input_query, input_key, input_value, numeric_embedding_facade)
+    output, attention_probabilities = multihead_attention(input_query, input_key, input_value, padding_and_loss_attention_mask=None, numeric_embedding_facade=numeric_embedding_facade)
     assert output.shape == expected_output_shape
     assert attention_probabilities.shape == expected_attention_probabilities_shape

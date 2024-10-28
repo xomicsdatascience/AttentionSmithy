@@ -96,7 +96,7 @@ class BigBirdAttentionMethod(nn.Module):
         numeric_embedding_facade,
         global_tokens_query: torch.Tensor,
         global_tokens_kv: torch.Tensor,
-        padding_attention_mask: torch.Tensor = None,
+        padding_and_loss_attention_mask: torch.Tensor,
         kv_index_table=None,
     ) -> torch.Tensor:
         """
@@ -116,8 +116,8 @@ class BigBirdAttentionMethod(nn.Module):
                 (batch_size, query_sequence_length)
             global_tokens_kv (torch.Tensor): A mask for the key and value tensors marking global tokens, of shape
                 (batch_size, kv_sequence_length)
-            padding_attention_mask (torch.Tensor, optional): The padding attention mask, of shape
-                (batch_size, kv_sequence_length). Defaults to None (no padding)
+            padding_and_loss_attention_mask (torch.Tensor, optional): The padding attention mask, of shape
+                (batch_size, kv_sequence_length).
             kv_index_table (torch.Tensor): Used for testing purposes only. Represents the direct index of blocks to
                 be used for attention. Each row length corresponds to the number of sparse query blocks. The number
                 of rows corresponds to the number of kv blocks. Duplicate blocks are calculated, but then only one
@@ -138,7 +138,7 @@ class BigBirdAttentionMethod(nn.Module):
             self._calculate_global_query_attention(
                 global_query_blocks,
                 key_blocks,
-                padding_attention_mask,
+                padding_and_loss_attention_mask,
                 query_blocks,
                 value_blocks,
             )
@@ -154,7 +154,7 @@ class BigBirdAttentionMethod(nn.Module):
             self._calculate_sparse_query_attention(
                 key_blocks,
                 kv_index_table,
-                padding_attention_mask,
+                padding_and_loss_attention_mask,
                 sparse_query_blocks,
                 value_blocks,
             )
@@ -170,12 +170,12 @@ class BigBirdAttentionMethod(nn.Module):
         self,
         global_query_blocks,
         key_blocks,
-        padding_attention_mask,
+        padding_and_loss_attention_mask,
         query_blocks,
         value_blocks,
     ):
         global_attention_scores = self._calculate_global_attention_scores(
-            global_query_blocks, key_blocks, padding_attention_mask
+            global_query_blocks, key_blocks, padding_and_loss_attention_mask
         )
         global_attention_softmax_weights = self._calculate_attention_softmax_weights(
             global_attention_scores,
@@ -195,13 +195,13 @@ class BigBirdAttentionMethod(nn.Module):
         self,
         key_blocks,
         kv_index_table,
-        padding_attention_mask,
+        padding_and_loss_attention_mask,
         sparse_query_blocks,
         value_blocks,
     ):
         kv_index_table, sparse_attention_scores = (
             self._calculate_sparse_attention_scores(
-                kv_index_table, sparse_query_blocks, key_blocks, padding_attention_mask
+                kv_index_table, sparse_query_blocks, key_blocks, padding_and_loss_attention_mask
             )
         )
         sparse_attention_softmax_weights = self._calculate_attention_softmax_weights(
@@ -342,7 +342,7 @@ class BigBirdAttentionMethod(nn.Module):
         return sparse_output_flat
 
     def _calculate_sparse_attention_scores(
-        self, kv_index_table, sparse_query_blocks, key_blocks, padding_attention_mask
+        self, kv_index_table, sparse_query_blocks, key_blocks, padding_and_loss_attention_mask
     ):
         if kv_index_table == None:
             kv_index_table = self._create_kv_index_table_for_local_global_random_block_selection().to(
@@ -356,7 +356,7 @@ class BigBirdAttentionMethod(nn.Module):
         )
         sparse_attention_scores = (
             self._calculate_all_sparse_attention_scores_from_index(
-                sparse_query_blocks, key_blocks, kv_index_table, padding_attention_mask
+                sparse_query_blocks, key_blocks, kv_index_table, padding_and_loss_attention_mask
             )
         )
         sparse_attention_scores = self._pad_duplicate_key_blocks(
@@ -462,7 +462,7 @@ class BigBirdAttentionMethod(nn.Module):
         )
 
     def _calculate_global_attention_scores(
-        self, global_query_blocks, key_blocks, padding_attention_mask
+        self, global_query_blocks, key_blocks, padding_and_loss_attention_mask
     ):
         attention_scores = torch.matmul(
             global_query_blocks.unsqueeze(3), key_blocks.unsqueeze(2)
@@ -485,33 +485,33 @@ class BigBirdAttentionMethod(nn.Module):
                 self.num_global_query_blocks,
                 self.num_blocks_kv,
             )
-        if padding_attention_mask != None:
-            padding_attention_mask_blocks = self.split_padding_attention_mask_by_blocks(
-                padding_attention_mask
+        if padding_and_loss_attention_mask != None:
+            padding_and_loss_attention_mask_blocks = self.split_padding_and_loss_attention_mask_by_blocks(
+                padding_and_loss_attention_mask
             )
             attention_scores = (
-                self.apply_padding_attention_mask_to_global_attention_scores(
-                    attention_scores, padding_attention_mask_blocks
+                self.apply_padding_and_loss_attention_mask_to_global_attention_scores(
+                    attention_scores, padding_and_loss_attention_mask_blocks
                 )
             )
         return attention_scores
 
-    def apply_padding_attention_mask_to_global_attention_scores(
-        self, attention_scores, padding_attention_mask_blocks
+    def apply_padding_and_loss_attention_mask_to_global_attention_scores(
+        self, attention_scores, padding_and_loss_attention_mask_blocks
     ):
         attention_scores = attention_scores.transpose(1, 2)
-        attention_scores[:, :, ~padding_attention_mask_blocks] = float("-inf")
+        attention_scores[:, :, ~padding_and_loss_attention_mask_blocks] = float("-inf")
         attention_scores = attention_scores.transpose(1, 2)
         return attention_scores
 
-    def split_padding_attention_mask_by_blocks(self, padding_attention_mask):
-        padding_attention_mask_blocks = padding_attention_mask.reshape(
+    def split_padding_and_loss_attention_mask_by_blocks(self, padding_and_loss_attention_mask):
+        padding_and_loss_attention_mask_blocks = padding_and_loss_attention_mask.reshape(
             self.batch_size, self.num_blocks_kv, self.block_size_kv
         )
-        padding_attention_mask_blocks = padding_attention_mask_blocks.unsqueeze(
+        padding_and_loss_attention_mask_blocks = padding_and_loss_attention_mask_blocks.unsqueeze(
             2
         ).expand(-1, -1, self.block_size_query, -1)
-        return padding_attention_mask_blocks
+        return padding_and_loss_attention_mask_blocks
 
     def _find_future_and_diagonal_masks_for_global_calculations(self):
         mask_for_future_blocks = torch.arange(self.num_blocks_query).unsqueeze(
@@ -545,7 +545,7 @@ class BigBirdAttentionMethod(nn.Module):
         return attention_weights
 
     def _calculate_all_sparse_attention_scores_from_index(
-        self, query_blocks, key_blocks, kv_index_table, padding_attention_mask
+        self, query_blocks, key_blocks, kv_index_table, padding_and_loss_attention_mask
     ):
         key_blocks_flat = key_blocks.reshape(
             self.num_heads,
@@ -580,26 +580,26 @@ class BigBirdAttentionMethod(nn.Module):
                 self.num_key_blocks_per_sparse_query_block,
                 self.num_sparse_query_blocks,
             )
-        if padding_attention_mask != None:
-            padding_attention_mask_blocks = self.split_padding_attention_mask_by_blocks(
-                padding_attention_mask
+        if padding_and_loss_attention_mask != None:
+            padding_and_loss_attention_mask_blocks = self.split_padding_and_loss_attention_mask_by_blocks(
+                padding_and_loss_attention_mask
             )
-            self._apply_padding_attention_mask_to_sparse_attention_scores(
-                attention_scores, kv_index_table_flat, padding_attention_mask_blocks
+            self._apply_padding_and_loss_attention_mask_to_sparse_attention_scores(
+                attention_scores, kv_index_table_flat, padding_and_loss_attention_mask_blocks
             )
         return attention_scores
 
-    def _apply_padding_attention_mask_to_sparse_attention_scores(
-        self, attention_scores, kv_index_table_flat, padding_attention_mask_blocks
+    def _apply_padding_and_loss_attention_mask_to_sparse_attention_scores(
+        self, attention_scores, kv_index_table_flat, padding_and_loss_attention_mask_blocks
     ):
-        padding_attention_mask_blocks_flat = padding_attention_mask_blocks.reshape(
+        padding_and_loss_attention_mask_blocks_flat = padding_and_loss_attention_mask_blocks.reshape(
             -1, self.block_size_query, self.block_size_kv
         )
-        padding_attention_mask_blocks_by_index_flat = (
-            padding_attention_mask_blocks_flat[kv_index_table_flat]
+        padding_and_loss_attention_mask_blocks_by_index_flat = (
+            padding_and_loss_attention_mask_blocks_flat[kv_index_table_flat]
         )
-        padding_attention_mask_blocks_by_index = (
-            padding_attention_mask_blocks_by_index_flat.view(
+        padding_and_loss_attention_mask_blocks_by_index = (
+            padding_and_loss_attention_mask_blocks_by_index_flat.view(
                 self.batch_size,
                 self.num_key_blocks_per_sparse_query_block,
                 self.num_sparse_query_blocks,
@@ -607,7 +607,7 @@ class BigBirdAttentionMethod(nn.Module):
                 self.block_size_kv,
             )
         )
-        attention_scores[:, ~padding_attention_mask_blocks_by_index] = float("-inf")
+        attention_scores[:, ~padding_and_loss_attention_mask_blocks_by_index] = float("-inf")
 
     def _find_future_and_diagonal_masks_for_sparse_calculations(self, kv_index_table):
         sparse_query_block_indices_offset_by_batch = (

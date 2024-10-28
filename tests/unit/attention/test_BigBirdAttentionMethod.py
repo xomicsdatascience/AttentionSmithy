@@ -83,6 +83,7 @@ def test__BigBirdAttentionMethod__full_block_attention_matches_full_original_att
     expected_result = return_expected_result(expected_attention_scores_all, value)
     no_purpose_window_extension_length, no_purpose_num_random_blocks = 0, 0
     global_tokens = [0] * (block_size_kv * num_blocks_kv)
+
     assert_big_bird_works_on_full_dataset_regardless_of_global_block_specification(
         block_size_query,
         expected_result,
@@ -1834,6 +1835,7 @@ def assert_big_bird_works_on_full_dataset_regardless_of_global_block_specificati
         global_tokens_query,
         global_tokens_kv,
         kv_index_table=kv_index_table,
+        padding_and_loss_attention_mask=None,
     )[0]
     assert torch.allclose(result, expected_result)
 

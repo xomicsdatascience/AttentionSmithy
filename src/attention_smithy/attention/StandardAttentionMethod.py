@@ -31,7 +31,7 @@ class StandardAttentionMethod(nn.Module):
         k,
         v,
         numeric_embedding_facade,
-        padding_and_loss_attention_mask=None,
+        padding_and_loss_attention_mask,
         **kwargs,
     ):
         """
@@ -45,8 +45,8 @@ class StandardAttentionMethod(nn.Module):
             numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
                 all numeric embedding methods (including position). Required to enable
                 alibi embedding.
-            padding_and_loss_attention_mask (torch.Tensor): A boolean mask corresponding to padding tokens in the query
-                and key inputs, of shape (batch_size, 1, query_length, kv_length).
+            padding_and_loss_attention_mask (torch.Tensor, optional): The padding attention mask, of shape
+                (batch_size, kv_sequence_length).
                 NOTE: tokens are often masked to pad samples to match the largest sample in a batch to keep
                 them the same size. However, the loss function may also require masking tokens, as in BERT.
                 That masking is included in this mask tensor.
@@ -90,10 +90,15 @@ class StandardAttentionMethod(nn.Module):
     def _apply_padding_and_loss_attention_masking_if_relevant(
         self, attention_scores, padding_and_loss_attention_mask
     ):
+
         if padding_and_loss_attention_mask is not None:
+            batch_size_index = 0
+            query_sequence_length_index = 2
+            attention_scores = attention_scores.transpose(batch_size_index, query_sequence_length_index)
             attention_scores = attention_scores.masked_fill(
                 padding_and_loss_attention_mask == 0, float("-inf")
             )
+            attention_scores = attention_scores.transpose(batch_size_index, query_sequence_length_index)
         return attention_scores
 
     def _reduce_attention_scores_to_probabilities(self, attention_scores):
