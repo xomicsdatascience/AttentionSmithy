@@ -9,6 +9,15 @@ def repeat_module_consecutively(
         module: nn.Module,
         number_of_repeats: int,
 ) -> nn.ModuleList:
+    """
+    Args:
+        module (nn.Module): A pytorch module that the user wants to repeat consecutively.
+            NOTE: The input and output shapes for this module must be identical, as one
+            repeat will feed into another.
+        number_of_repeats (int): The number of consecutive repeats of the module.
+    Returns:
+        modules (nn.ModuleList): A list of modules that are repeats of the given module.
+    """
     modules = nn.ModuleList([copy.deepcopy(module) for _ in range(number_of_repeats)])
     _reset_all_copied_initial_weights(modules)
     return modules
