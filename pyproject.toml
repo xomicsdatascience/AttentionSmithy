@@ -28,5 +28,5 @@ dependencies = [
 where = ["src"]
 
 [project.urls]
-"Homepage" = "https://github.com/CCranney/AttentionSmithy"
-"Bug Tracker" = "https://github.com/CCranney/AttentionSmithy/issues"
+"Homepage" = "https://github.com/xomicsdatascience/AttentionSmithy"
+"Bug Tracker" = "https://github.com/xomicsdatascience/AttentionSmithy/issues"
