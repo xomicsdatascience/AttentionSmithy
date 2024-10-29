@@ -12,7 +12,7 @@ from attention_smithy.numeric_embeddings import (
 
 class _NoAddEmbedding:
     """
-    Takes any input an returns 0.
+    Takes any input and returns 0.
     """
     def __call__(self, *args, **kwargs):
         return 0

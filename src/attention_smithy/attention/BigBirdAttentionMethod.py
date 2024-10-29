@@ -97,7 +97,7 @@ class BigBirdAttentionMethod(nn.Module):
         global_tokens_query: torch.Tensor,
         global_tokens_kv: torch.Tensor,
         padding_and_loss_attention_mask: torch.Tensor,
-        kv_index_table=None,
+        kv_index_table: torch.Tensor = None,
     ) -> torch.Tensor:
         """
         Forward pass of the Big Bird attention module.
