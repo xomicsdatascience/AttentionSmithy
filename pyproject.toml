@@ -22,6 +22,7 @@ dependencies = [
     'pytorch-lightning>=2.2.1',
     'scikit-learn>=1.1.2',
     'pandas>=1.2.2',
+    'rotary-embedding-torch>=0.8.4',
 ]
 
 [tool.setuptools.packages.find]
