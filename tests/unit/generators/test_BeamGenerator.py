@@ -35,6 +35,7 @@ def dummy_model(vocab_size, expected_output, end_token):
             weights = torch.zeros((vocab_size, vocab_size))
             weights[-10:, end_token] = 1.0
             weights[end_token+1, end_token] = 1.0
+            weights[end_token+1, end_token+2] = 1.0
             weights[end_token+2, end_token] = 1.0
             high_score = 10.0
             mid_score = 8.0
