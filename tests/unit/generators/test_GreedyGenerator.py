@@ -13,9 +13,9 @@ def vocab_size():
 
 @pytest.fixture
 def dummy_model(vocab_size):
-    class DummyModel(GeneratorModuleAbstractClass):
+    class DummyGreedyModel(GeneratorModuleAbstractClass):
         def __init__(self, vocab_size):
-            super(DummyModel, self).__init__()
+            super(DummyGreedyModel, self).__init__()
             self.token_embedding = nn.Embedding(vocab_size, vocab_size)
             self.token_embedding.weight.data = torch.tensor([
             #    0    1    2    3    4    5    6    7    8    9
@@ -34,7 +34,7 @@ def dummy_model(vocab_size):
         def forward_decode(self, input_tokens):
             embedded_tokens = self.token_embedding(input_tokens)
             return embedded_tokens
-    return DummyModel(vocab_size)
+    return DummyGreedyModel(vocab_size)
 
 @pytest.fixture
 def start_token():
@@ -53,5 +53,6 @@ def tgt_input_tensor(start_token):
     return torch.tensor([[start_token]])
 
 def test__GreedyGenerator(generator_context, dummy_model, tgt_input_tensor, end_token, expected_output):
-    output = generator_context.generate_sequence(dummy_model, end_token, tgt_input_tensor)
-    assert torch.allclose(output, expected_output)
+    with torch.no_grad():
+        output = generator_context.generate_sequence(dummy_model, end_token, tgt_input_tensor)
+        assert torch.allclose(output, expected_output)

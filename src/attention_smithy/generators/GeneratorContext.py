@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from attention_smithy.generators.GeneratorStrategy import GeneratorStrategy
 from attention_smithy.generators.GreedyGenerator import GreedyGenerator
-
+from attention_smithy.generators.BeamGenerator import BeamGenerator
 
 class GeneratorContext:
     """
@@ -12,6 +12,7 @@ class GeneratorContext:
                  method: str = "greedy",
                  src_embedding: torch.Tensor = None,
                  maximum_sequence_length: int = 1000,
+                 **kwargs,
                  ) -> None:
         """
         Args:
@@ -28,7 +29,9 @@ class GeneratorContext:
             src_embedding (torch.Tensor): See description above.
         """
         if method == "greedy":
-            self._strategy = GreedyGenerator()
+            self._strategy = GreedyGenerator(**kwargs)
+        if method == "beam":
+            self._strategy = BeamGenerator(**kwargs)
         self.src_embedding = src_embedding
         self.maximum_sequence_length = maximum_sequence_length
 
