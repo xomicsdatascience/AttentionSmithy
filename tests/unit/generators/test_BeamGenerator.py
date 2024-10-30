@@ -32,11 +32,7 @@ def dummy_model(vocab_size, expected_output, end_token):
             self.token_embedding.weight.data = self._create_dummy_weights(desired_sequence)
 
         def _create_dummy_weights(self, desired_sequence):
-            weights = torch.zeros((vocab_size, vocab_size))
-            weights[-10:, end_token] = 1.0
-            weights[end_token+1, end_token] = 1.0
-            weights[end_token+1, end_token+2] = 1.0
-            weights[end_token+2, end_token] = 1.0
+            weights = self._initialize_dummy_weights()
             high_score = 10.0
             mid_score = 8.0
             low_score = 6.0
@@ -50,11 +46,25 @@ def dummy_model(vocab_size, expected_output, end_token):
                 weights[token, next_token] = high_score
                 weights[token, next_token + 1] = mid_score
                 weights[token, next_token + 2] = low_score
-                weights[token + 1, token + 3] = meh_score
-                weights[token + 1, token + 4] = meh_score
-                weights[token + 2, token + 3] = meh_score
-                weights[token + 2, token + 4] = meh_score
+                self._set_side_branch_paths_to_temporary_slight_increase_in_weights(meh_score, token, weights)
             return weights
+
+        def _set_side_branch_paths_to_temporary_slight_increase_in_weights(self, meh_score, token, weights):
+            weights[token + 1, token + 3] = meh_score
+            weights[token + 1, token + 4] = meh_score
+            weights[token + 2, token + 3] = meh_score
+            weights[token + 2, token + 4] = meh_score
+
+        def _initialize_dummy_weights(self):
+            weights = torch.zeros((vocab_size, vocab_size))
+            self._set_weights_at_end_of_program_to_point_to_end_token(weights)
+            return weights
+
+        def _set_weights_at_end_of_program_to_point_to_end_token(self, weights):
+            weights[-10:, end_token] = 1.0
+            weights[end_token + 1, end_token] = 1.0
+            weights[end_token + 1, end_token + 2] = 1.0
+            weights[end_token + 2, end_token] = 1.0
 
         def _ensure_optimal_path_is_not_found_through_the_first_greedy_option(self, desired_sequence, high_score,
                                                                               low_score, mid_score, weights):
