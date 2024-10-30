@@ -27,7 +27,6 @@ class BeamGenerator(GeneratorStrategy):
         beams = initial_beam.repeat(self.beam_width, 1)
         beams = torch.cat((beams, top_k_indices_across_beams.transpose(0, 1)), dim=1)
         scores = top_k_probabilities_across_beams.flatten()
-        print()
         for step in range(initial_sequence_length, maximum_sequence_length):
             finished_beam_mask = (beams == end_token).any(dim=1)
             finished_beams = beams[finished_beam_mask]
@@ -58,9 +57,6 @@ class BeamGenerator(GeneratorStrategy):
             beams = expanded_beams_with_new_additions[top_score_indices].to(torch.int64)
             scores = expanded_scores[top_score_indices]
             reached_end_token_mask = (beams == end_token).any(dim=1)
-            print('\n'*5)
-            print(beams)
-            print(scores)
             if torch.all(reached_end_token_mask):
                 best_beam_index = torch.argmax(scores)
                 best_beam = beams[best_beam_index]
