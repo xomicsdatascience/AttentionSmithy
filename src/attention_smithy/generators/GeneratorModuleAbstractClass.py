@@ -3,7 +3,11 @@ from torch import nn
 from abc import ABC, abstractmethod
 
 class GeneratorModuleAbstractClass(ABC, nn.Module):
-
+    """
+    The use of models in the generator context/strategy require the use of a
+        "forward_decode" function. Setting a model as a child of this abstract
+        class will enforce setting this function.
+    """
     @abstractmethod
     def forward_decode(self,
                        tgt_input: torch.Tensor,
