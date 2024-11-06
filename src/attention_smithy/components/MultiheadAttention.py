@@ -23,7 +23,6 @@ class MultiheadAttention(nn.Module):
                  embedding_dimension: int,
                  number_of_heads: int,
                  attention_method: Union[BigBirdAttentionMethod, StandardAttentionMethod],
-                 **kwargs
                  ) -> None:
         """
         Args:
