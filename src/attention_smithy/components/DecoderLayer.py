@@ -37,7 +37,7 @@ class DecoderLayer(nn.Module):
                 src: torch.Tensor,
                 tgt_padding_mask: torch.Tensor,
                 src_padding_mask: torch.Tensor,
-                **kwargs
+                **kwargs,
                 ) -> torch.Tensor:
         """
         Args:
@@ -69,6 +69,7 @@ class DecoderLayer(nn.Module):
             input_key=tgt,
             input_value=tgt,
             padding_and_loss_attention_mask=tgt_padding_mask,
+            is_causal_masking=True,
             **kwargs,
         )
         tgt = self.cross_attention_sublayer(
