@@ -27,6 +27,7 @@ class DecoderLayer(nn.Module):
             dropout (float, optional): The dropout probability. Defaults to 0.0.
         """
         super().__init__()
+        self_attention.is_causal_masking = True
         self.self_attention_sublayer = SublayerUnit(self_attention, embedding_dimension, dropout)
         self.cross_attention_sublayer = SublayerUnit(cross_attention, embedding_dimension, dropout)
         self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)
@@ -69,7 +70,6 @@ class DecoderLayer(nn.Module):
             input_key=tgt,
             input_value=tgt,
             padding_and_loss_attention_mask=tgt_padding_mask,
-            is_causal_masking=True,
             **kwargs,
         )
         tgt = self.cross_attention_sublayer(
