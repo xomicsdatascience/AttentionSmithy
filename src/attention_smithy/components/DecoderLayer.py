@@ -27,7 +27,8 @@ class DecoderLayer(nn.Module):
             dropout (float, optional): The dropout probability. Defaults to 0.0.
         """
         super().__init__()
-        self_attention.is_causal_masking = True
+        if self_attention.attention_method.is_causal_masking == False:
+            raise RuntimeWarning("CAUTION: your decoder layer self attention method has `is_causal_masking` is set to False. This would render most decoder strategies ineffective.")
         self.self_attention_sublayer = SublayerUnit(self_attention, embedding_dimension, dropout)
         self.cross_attention_sublayer = SublayerUnit(cross_attention, embedding_dimension, dropout)
         self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)

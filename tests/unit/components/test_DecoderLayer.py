@@ -4,6 +4,8 @@ from attention_smithy.components import DecoderLayer, MultiheadAttention, FeedFo
 from attention_smithy.attention import StandardAttentionMethod, BigBirdAttentionMethod
 from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
 import copy
+import re
+import warnings
 
 @pytest.fixture
 def embedding_dimension():
@@ -57,22 +59,25 @@ def number_of_heads():
     return 10
 
 @pytest.fixture
-def standard_multihead_attention(embedding_dimension, number_of_heads):
-    standard_attention_method = StandardAttentionMethod()
-    return MultiheadAttention(embedding_dimension, number_of_heads, standard_attention_method)
+def is_causal_masking_warning_error():
+    return "CAUTION: your decoder layer self attention method has `is_causal_masking` is set to False. This would render most decoder strategies ineffective."
 
-@pytest.fixture
-def standard_decoder_layer(embedding_dimension, standard_multihead_attention, feed_forward_network, dropout):
-    return DecoderLayer(embedding_dimension, standard_multihead_attention, copy.deepcopy(standard_multihead_attention), feed_forward_network, dropout)
+def test__DecoderLayer__works_with_standard_self_attention(query_tensor, kv_tensor, numeric_embedding_facade, embedding_dimension, number_of_heads, feed_forward_network, dropout, is_causal_masking_warning_error):
+    standard_attention_method__with_causal_masking = StandardAttentionMethod(is_causal_masking=True)
+    self_attention = MultiheadAttention(embedding_dimension, number_of_heads, standard_attention_method__with_causal_masking)
+    standard_attention_method__without_causal_masking = StandardAttentionMethod()
+    cross_attention = MultiheadAttention(embedding_dimension, number_of_heads, standard_attention_method__without_causal_masking)
+    standard_decoder_layer = DecoderLayer(embedding_dimension, self_attention, cross_attention, feed_forward_network, dropout)
+    output = standard_decoder_layer(tgt=query_tensor, src=kv_tensor, tgt_padding_mask=None, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
+    assert output.shape == query_tensor.shape
 
-@pytest.fixture
-def big_bird_multihead_attention(block_size, embedding_dimension, number_of_heads):
-    big_bird_attention = BigBirdAttentionMethod(block_size, block_size, local_window_extension_length=0)
-    return MultiheadAttention(embedding_dimension, number_of_heads, big_bird_attention)
-
-@pytest.fixture
-def big_bird_decoder_layer(embedding_dimension, big_bird_multihead_attention, feed_forward_network, dropout):
-    return DecoderLayer(embedding_dimension, big_bird_multihead_attention, copy.deepcopy(big_bird_multihead_attention), feed_forward_network, dropout)
+def test__DecoderLayer__throws_warning_error_when_standard_self_attention_method_has_no_causal_masking(embedding_dimension, number_of_heads, feed_forward_network, dropout, is_causal_masking_warning_error):
+    standard_attention_method__with_causal_masking = StandardAttentionMethod()
+    self_attention = MultiheadAttention(embedding_dimension, number_of_heads, standard_attention_method__with_causal_masking)
+    standard_attention_method__without_causal_masking = StandardAttentionMethod()
+    cross_attention = MultiheadAttention(embedding_dimension, number_of_heads, standard_attention_method__without_causal_masking)
+    with pytest.raises(RuntimeWarning, match=re.escape(is_causal_masking_warning_error)):
+        standard_decoder_layer = DecoderLayer(embedding_dimension, self_attention, cross_attention, feed_forward_network, dropout)
 
 @pytest.fixture
 def global_tokens_query(batch_size, num_blocks_query, block_size):
@@ -82,11 +87,13 @@ def global_tokens_query(batch_size, num_blocks_query, block_size):
 def global_tokens_kv(batch_size, num_blocks_kv, block_size):
     return torch.zeros((batch_size, num_blocks_kv*block_size))
 
-def test__DecoderLayer__works_with_standard_self_attention(query_tensor, kv_tensor, numeric_embedding_facade, standard_decoder_layer):
-    output = standard_decoder_layer(tgt=query_tensor, src=kv_tensor, tgt_padding_mask=None, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
-    assert output.shape == query_tensor.shape
+def test__DecoderLayer__works_with_big_bird_self_attention(query_tensor, kv_tensor, numeric_embedding_facade, global_tokens_query, global_tokens_kv, block_size, embedding_dimension, number_of_heads, feed_forward_network, dropout):
+    big_bird_attention_method__with_causal_masking = BigBirdAttentionMethod(block_size, block_size, local_window_extension_length=0, is_causal_masking=True)
+    self_attention = MultiheadAttention(embedding_dimension, number_of_heads, big_bird_attention_method__with_causal_masking)
+    big_bird_attention_method__without_causal_masking = BigBirdAttentionMethod(block_size, block_size, local_window_extension_length=0)
+    cross_attention = MultiheadAttention(embedding_dimension, number_of_heads, big_bird_attention_method__without_causal_masking)
+    big_bird_decoder_layer = DecoderLayer(embedding_dimension, self_attention, cross_attention, feed_forward_network, dropout)
 
-def test__DecoderLayer__works_with_big_bird_self_attention(query_tensor, kv_tensor, numeric_embedding_facade, big_bird_decoder_layer, global_tokens_query, global_tokens_kv):
     output = big_bird_decoder_layer(
         tgt=query_tensor,
         src=kv_tensor,
@@ -97,3 +104,11 @@ def test__DecoderLayer__works_with_big_bird_self_attention(query_tensor, kv_tens
         global_tokens_kv=global_tokens_kv,
     )
     assert output.shape == query_tensor.shape
+
+def test__DecoderLayer__throws_warning_error_when_big_bird_self_attention_method_has_no_causal_masking(block_size, embedding_dimension, number_of_heads, feed_forward_network, dropout, is_causal_masking_warning_error):
+    big_bird_attention_method__with_causal_masking = BigBirdAttentionMethod(block_size, block_size, local_window_extension_length=0)
+    self_attention = MultiheadAttention(embedding_dimension, number_of_heads, big_bird_attention_method__with_causal_masking)
+    big_bird_attention_method__without_causal_masking = BigBirdAttentionMethod(block_size, block_size, local_window_extension_length=0)
+    cross_attention = MultiheadAttention(embedding_dimension, number_of_heads, big_bird_attention_method__without_causal_masking)
+    with pytest.raises(RuntimeWarning, match=re.escape(is_causal_masking_warning_error)):
+        big_bird_decoder_layer = DecoderLayer(embedding_dimension, self_attention, cross_attention, feed_forward_network, dropout)
