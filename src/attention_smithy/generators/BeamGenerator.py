@@ -45,7 +45,8 @@ class BeamGenerator(GeneratorStrategy):
     """
     def __init__(self,
                  beam_width:int = 3,
-                 length_penalty_alpha:float = 0.6
+                 length_penalty_alpha:float = 0.6,
+                 max_sequence_length:int = 150,
                  ) -> None:
         """
         Args:
@@ -53,10 +54,14 @@ class BeamGenerator(GeneratorStrategy):
                 generation loop. Default is 3.
             length_penalty_alpha (float): Adjusts the length penalty used in calculating
                 each score after a token is added. Default is 0.6.
+            max_sequence_length (int): The maximum sequence length to be generated. This
+                variable stops beam generation from growing out of hand during early
+                training steps.
         """
         super().__init__()
         self.beam_width = beam_width
         self.length_penalty_alpha = length_penalty_alpha
+        self.max_sequence_length = max_sequence_length
 
     def generate_sequence(
         self,
@@ -73,7 +78,7 @@ class BeamGenerator(GeneratorStrategy):
         beams, scores = self._run_input_through_model_and_attach_best_next_tokens_to_separate_beams(model, tgt_input, **kwargs)
         for step in range(tgt_input.size(1), maximum_sequence_length):
             beams, scores = self._add_tokens_to_branching_beams_and_prune_low_scoring_branches(beams, model, scores, step, **kwargs)
-            if torch.all(self.mask_for_beams_that_have_reached_the_end_token):
+            if torch.all(self.mask_for_beams_that_have_reached_the_end_token) or beams.shape[1] > self.max_sequence_length:
                 best_beam = self._identify_best_beam_from_all_finished_beams(beams, scores)
                 return best_beam
         best_beam_index = torch.argmax(scores)
@@ -108,6 +113,8 @@ class BeamGenerator(GeneratorStrategy):
 
     def _remove_trailing_end_tokens_from_best_beam(self, best_beam):
         end_idx = torch.min(torch.where(best_beam == self.end_token)[0]) + 1
+        if end_idx == 1:
+            return torch.cat((best_beam, torch.tensor([self.end_token]).to(best_beam.device)))
         return best_beam[:end_idx]
 
     def _prune_low_scoring_beams_to_only_keep_beam_width_amount(self, expanded_beams, expanded_scores):
@@ -134,7 +141,7 @@ class BeamGenerator(GeneratorStrategy):
         expanded_unfinished_beams = unfinished_beams.repeat_interleave(self.beam_width, dim=0)
         expanded_beams = torch.cat((expanded_unfinished_beams, finished_beams), dim=0)
         beam_additions = torch.cat(
-            (top_k_indices_across_beams.flatten(), torch.tensor([self.end_token for i in range(len(finished_scores))])))
+            (top_k_indices_across_beams.flatten(), torch.tensor([self.end_token for i in range(len(finished_scores))]).to(expanded_beams.device)))
         expanded_beams_with_new_additions = torch.cat((expanded_beams, beam_additions.unsqueeze(1)), dim=1)
         return expanded_beams_with_new_additions
 
