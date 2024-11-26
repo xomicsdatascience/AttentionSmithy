@@ -112,7 +112,11 @@ class BeamGenerator(GeneratorStrategy):
         return best_beam
 
     def _remove_trailing_end_tokens_from_best_beam(self, best_beam):
-        end_idx = torch.min(torch.where(best_beam == self.end_token)[0]) + 1
+        indices = torch.where(best_beam == self.end_token)[0]
+        if indices.numel() > 0:
+            end_idx = torch.min(indices) + 1
+        else:
+            end_idx = 1
         if end_idx == 1:
             return torch.cat((best_beam, torch.tensor([self.end_token]).to(best_beam.device)))
         return best_beam[:end_idx]
