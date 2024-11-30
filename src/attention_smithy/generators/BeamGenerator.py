@@ -133,7 +133,7 @@ class BeamGenerator(GeneratorStrategy):
                                                                     unfinished_scores):
         expanded_old_scores = unfinished_scores.repeat_interleave(self.beam_width)
         current_sequence_length = step + 1
-        length_penalty = (current_sequence_length + 1) ** self.length_penalty_alpha / (current_sequence_length + 1)
+        length_penalty = ((5 + step) ** self.length_penalty_alpha) / ((5 + 1) ** self.length_penalty_alpha)
         expanded_new_scores = (expanded_old_scores + top_k_probabilities_across_beams.flatten()) / length_penalty
         expanded_scores = torch.cat((expanded_new_scores, finished_scores), dim=0)
         return expanded_scores

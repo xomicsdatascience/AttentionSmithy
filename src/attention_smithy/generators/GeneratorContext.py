@@ -3,6 +3,7 @@ from torch import nn
 from attention_smithy.generators.GeneratorStrategy import GeneratorStrategy
 from attention_smithy.generators.GreedyGenerator import GreedyGenerator
 from attention_smithy.generators.BeamGenerator import BeamGenerator
+from attention_smithy.generators.BeamGeneratorAcrossBatch import BeamGeneratorAcrossBatch
 
 class GeneratorContext:
     """
@@ -46,6 +47,8 @@ class GeneratorContext:
             self._strategy = GreedyGenerator(**kwargs)
         if method == "beam":
             self._strategy = BeamGenerator(**kwargs)
+        if method == "beam_batch":
+            self._strategy = BeamGeneratorAcrossBatch(**kwargs)
         self.maximum_sequence_length = maximum_sequence_length
 
     def generate_sequence(
