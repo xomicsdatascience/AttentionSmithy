@@ -1,7 +1,7 @@
 import torch
 from rotary_embedding_torch import RotaryEmbedding as RotaryEmbeddingTorch
 
-class RotaryEmbedding:
+class RotaryPositionEmbedding:
     """
     A class that adjusts the query/key matrices to reflect position.
         Performed by breaking a token embedding into groups of 2, treats
