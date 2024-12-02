@@ -4,7 +4,7 @@ from attention_smithy.numeric_embeddings import (
     ALiBiPositionEmbedding,
     ALiBiCustomEmbedding,
     LearnedPositionEmbedding,
-    RotaryEmbedding,
+    RotaryPositionEmbedding,
     SinusoidalPositionEmbedding,
     SinusoidalCustomEmbedding,
 )
@@ -46,23 +46,23 @@ class NumericEmbeddingFacade:
                  sinusoidal_position: Union[NoAddEmbedding, SinusoidalPositionEmbedding] = NoAddEmbedding(),
                  sinusoidal_custom: Union[NoAddEmbedding, SinusoidalCustomEmbedding] = NoAddEmbedding(),
                  learned_position: Union[NoAddEmbedding, LearnedPositionEmbedding] = NoAddEmbedding(),
-                 rotary_position: Union[PassthroughEmbedding, RotaryEmbedding] = PassthroughEmbedding(),
+                 rotary_position: Union[PassthroughEmbedding, RotaryPositionEmbedding] = PassthroughEmbedding(),
                  alibi_position: Union[NoAddEmbedding, ALiBiPositionEmbedding] = NoAddEmbedding(),
                  alibi_custom: Union[NoAddEmbedding, ALiBiCustomEmbedding] = NoAddEmbedding(),
                  ) -> None:
         """
         Args:
-            sinusoidalPosition: SinusoidalPositionEmbedding() instance. If not set,
+            sinusoidal_position: SinusoidalPositionEmbedding() instance. If not set,
                 will just return 0.
-            sinusoidalCustom: SinusoidalCustomEmbedding() instance. If not set,
+            sinusoidal_custom: SinusoidalCustomEmbedding() instance. If not set,
                 will just return 0.
-            learnedPosition: LearnedPositionEmbedding() instance. If not set,
+            learned_position: LearnedPositionEmbedding() instance. If not set,
                 will just return 0.
-            rotaryPosition: RotaryEmbedding() instance. If not set,
+            rotary_position: RotaryPositionEmbedding() instance. If not set,
                 will return the given input unchanged.
-            alibiPosition: ALiBiPositionEmbedding() instance. If not set,
+            alibi_position: ALiBiPositionEmbedding() instance. If not set,
                 will just return 0.
-            alibiCustom: ALiBiCustomEmbedding() instance. If not set,
+            alibi_custom: ALiBiCustomEmbedding() instance. If not set,
                 will just return 0.
 
         """
