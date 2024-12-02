@@ -1,35 +1,36 @@
 import torch
 from torch import nn
 
-class LearnedEmbedding(nn.Module):
+class LearnedPositionEmbedding(nn.Module):
     """
     A pytorch module for learned positional embeddings.
     """
     def __init__(self,
-                 vocab_size: int,
+                 max_sequence_length: int,
                  embedding_dimension: int,
-                 padding_idx: int = 0
                  ) -> None:
         """
         Args:
-            vocab_size (int): The number of values in the expected vocabulary.
+            max_sequence_length (int): The maximum sequence length for any input.
             embedding_dimension (int): The token embedding dimension size.
-            padding_idx (int): The index assigned to ignorable padding tokens.
         Attributes:
             embedding (nn.Embedding): a module to pass position or other sequences
                 to for embedding.
         """
-        self.embedding = nn.Embedding(vocab_size, embedding_dimension, padding_idx=padding_idx)
+
+        super(LearnedPositionEmbedding, self).__init__()
+        self.embedding = nn.Embedding(max_sequence_length, embedding_dimension)
+
 
     def forward(self,
-                x: torch.Tensor,
+                sequence_length: int,
                 ) -> torch.Tensor:
         """
         Args:
-            x (torch.Tensor): An input tensor of values to be encoded, of shape
-                (batch_size, sequence_length).
+            sequence_length (torch.Tensor): The sequence length of a given batch.
         Returns:
             torch.Tensor: An output tensor of shape
                 (batch_size, sequence_length, embedding_dimension)
         """
-        return embedding(x)
+        position_ids = torch.arange(sequence_length, device=self.embedding.weight.device)
+        return self.embedding(position_ids)
