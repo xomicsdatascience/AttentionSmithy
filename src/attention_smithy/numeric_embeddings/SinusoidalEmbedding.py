@@ -66,7 +66,7 @@ class SinusoidalPositionEmbedding(SinusoidalEmbedding):
         """
 
         _, sequence_length, _ = x.shape
-        return self.positional_encoding[:sequence_length, :].to(x.device)
+        return self.positional_encoding[:sequence_length, :]
 
 class SinusoidalCustomEmbedding(SinusoidalEmbedding):
     """
