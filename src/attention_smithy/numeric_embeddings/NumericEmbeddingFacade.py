@@ -3,21 +3,21 @@ from typing import Union
 from attention_smithy.numeric_embeddings import (
     ALiBiPositionEmbedding,
     ALiBiCustomEmbedding,
-    LearnedEmbedding,
+    LearnedPositionEmbedding,
     RotaryEmbedding,
     SinusoidalPositionEmbedding,
     SinusoidalCustomEmbedding,
 )
 
 
-class _NoAddEmbedding:
+class NoAddEmbedding:
     """
     Takes any input and returns 0.
     """
     def __call__(self, *args, **kwargs):
         return 0
 
-class _PassthroughEmbedding:
+class PassthroughEmbedding:
     """
     Takes any input and returns the input.
     """
@@ -43,12 +43,12 @@ class NumericEmbeddingFacade:
         values instead, that option is available as well.
     """
     def __init__(self,
-                 sinusoidal_position: Union[_NoAddEmbedding, SinusoidalPositionEmbedding] = _NoAddEmbedding(),
-                 sinusoidal_custom: Union[_NoAddEmbedding, SinusoidalCustomEmbedding] = _NoAddEmbedding(),
-                 learned_position: Union[_NoAddEmbedding, LearnedEmbedding] = _NoAddEmbedding(),
-                 rotary_position: Union[_PassthroughEmbedding, RotaryEmbedding] = _PassthroughEmbedding(),
-                 alibi_position: Union[_NoAddEmbedding, ALiBiPositionEmbedding] = _NoAddEmbedding(),
-                 alibi_custom: Union[_NoAddEmbedding, ALiBiCustomEmbedding] = _NoAddEmbedding(),
+                 sinusoidal_position: Union[NoAddEmbedding, SinusoidalPositionEmbedding] = NoAddEmbedding(),
+                 sinusoidal_custom: Union[NoAddEmbedding, SinusoidalCustomEmbedding] = NoAddEmbedding(),
+                 learned_position: Union[NoAddEmbedding, LearnedPositionEmbedding] = NoAddEmbedding(),
+                 rotary_position: Union[PassthroughEmbedding, RotaryEmbedding] = PassthroughEmbedding(),
+                 alibi_position: Union[NoAddEmbedding, ALiBiPositionEmbedding] = NoAddEmbedding(),
+                 alibi_custom: Union[NoAddEmbedding, ALiBiCustomEmbedding] = NoAddEmbedding(),
                  ) -> None:
         """
         Args:
@@ -56,7 +56,7 @@ class NumericEmbeddingFacade:
                 will just return 0.
             sinusoidalCustom: SinusoidalCustomEmbedding() instance. If not set,
                 will just return 0.
-            learnedPosition: LearnedEmbedding() instance. If not set,
+            learnedPosition: LearnedPositionEmbedding() instance. If not set,
                 will just return 0.
             rotaryPosition: RotaryEmbedding() instance. If not set,
                 will return the given input unchanged.
@@ -76,14 +76,14 @@ class NumericEmbeddingFacade:
     def calculate_sinusoidal_and_learned_tokenizations(self,
                                                        x: torch.Tensor,
                                                        sinusoidal_custom_values: torch.Tensor=None,
-                                                       learned_values: torch.Tensor=None,
+                                                       sequence_length: int=None,
                                                        **kwargs
                                                        ) -> torch.Tensor:
-        output = torch.zeros_like(x)
+        output = torch.zeros_like(x).to('cpu')
         output += self.sinusoidal_position(x)
         output += self.sinusoidal_custom(x, sinusoidal_custom_values)
-        output += self.learned_position(learned_values)
-        return output
+        output += self.learned_position(sequence_length)
+        return output.to(x.device)
 
     def apply_rotation_to_query_and_key_matrices(self,
                                                  query: torch.Tensor,
@@ -98,13 +98,12 @@ class NumericEmbeddingFacade:
                                                   alibi_key_values: torch.Tensor = None,
                                                   **kwargs
                                                   ) -> torch.Tensor:
-        device = query.device
         batch_size, num_heads, query_sequence_length, _ = query.shape
         _, _, key_sequence_length, _ = key.shape
-        output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length)).to(device)
+        output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length))
         output += self.alibi_position(query_sequence_length, key_sequence_length)
         output += self.alibi_custom(alibi_query_values, alibi_key_values)
-        return output
+        return output.to(query.device)
 
 
 

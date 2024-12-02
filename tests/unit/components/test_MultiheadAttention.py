@@ -3,7 +3,7 @@ import torch
 import re
 from attention_smithy.attention import StandardAttentionMethod, BigBirdAttentionMethod
 from attention_smithy.components import MultiheadAttention
-from attention_smithy.numeric_embeddings import NumericEmbeddingFacade, RotaryEmbedding
+from attention_smithy.numeric_embeddings import NumericEmbeddingFacade, RotaryPositionEmbedding
 
 @pytest.fixture
 def attention_method():
@@ -76,7 +76,7 @@ def test__MultiheadAttention__multihead_attention_still_works_when_query_and_key
     assert attention_probabilities.shape == expected_attention_probabilities_shape
 
 def test__MultiheadAttention__forward_pass_output_has_correct_shape__with_rotary_embedding(batch_size, number_of_heads, embedding_dimension, multihead_attention):
-    rotary_embedding = RotaryEmbedding(number_of_heads)
+    rotary_embedding = RotaryPositionEmbedding(number_of_heads)
     numeric_embedding_facade = NumericEmbeddingFacade(rotary_position=rotary_embedding)
     query_and_kv_sequence_length = 15
     input_query = torch.rand((batch_size, query_and_kv_sequence_length, embedding_dimension))

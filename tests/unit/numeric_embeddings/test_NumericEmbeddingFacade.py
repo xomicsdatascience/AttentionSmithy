@@ -1,6 +1,6 @@
 import pytest
 import torch
-from attention_smithy.numeric_embeddings.NumericEmbeddingFacade import _NoAddEmbedding, _PassthroughEmbedding
+from attention_smithy.numeric_embeddings.NumericEmbeddingFacade import NoAddEmbedding, PassthroughEmbedding
 
 @pytest.fixture
 def input_tensor():
@@ -11,13 +11,13 @@ def input_tensor():
     return input_tensor
 
 def test__NumericEmbeddingFacade__no_add_types_return_nothing(input_tensor):
-    noAddEmbedding = _NoAddEmbedding()
+    noAddEmbedding = NoAddEmbedding()
     output_tensor = input_tensor + noAddEmbedding(input_tensor)
     assert torch.allclose(input_tensor, output_tensor)
 
 def test__NumericEmbeddingFacade__passthrough_returns_tensor_with_no_change(input_tensor):
     input_tensor_copy = input_tensor.clone()
-    passthroughEmbedding = _PassthroughEmbedding()
+    passthroughEmbedding = PassthroughEmbedding()
     output_tensor = passthroughEmbedding(input_tensor)
     assert torch.allclose(input_tensor_copy, output_tensor)
 
