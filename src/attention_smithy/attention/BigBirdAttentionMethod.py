@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from attention_smithy.utils import create_causal_mask
+from attention_smithy.numeric_embeddings import NoAddEmbedding, PassthroughEmbedding
 
 
 class BigBirdAttentionMethod(nn.Module):
@@ -127,6 +128,7 @@ class BigBirdAttentionMethod(nn.Module):
         Returns:
             torch.Tensor: The output tensor, of shape (batch_size, num_heads, query_length, head_dim)
         """
+        self._raise_errors_for_unimplemented_position_strategies_if_specified(numeric_embedding_facade)
         self._initialize_parameters(q, k, global_tokens_query, global_tokens_kv)
         key_blocks, query_blocks, value_blocks = (
             self._reshape_all_tensors_for_block_and_batch_calculations(k, q, v)
@@ -165,6 +167,17 @@ class BigBirdAttentionMethod(nn.Module):
             sparse_attention_softmax_weights,
             global_attention_softmax_weights,
         )
+
+    def _raise_errors_for_unimplemented_position_strategies_if_specified(self, numeric_embedding_facade):
+        if numeric_embedding_facade != None and (
+                not isinstance(numeric_embedding_facade.alibi_position, NoAddEmbedding) or not isinstance(
+                numeric_embedding_facade.alibi_custom, NoAddEmbedding)):
+            raise RuntimeError(
+                "ALiBi numeric embedding is employed. This has not yet been implemented for BigBird Attention. Exiting")
+        if numeric_embedding_facade != None and not isinstance(numeric_embedding_facade.rotary_position,
+                                                               PassthroughEmbedding):
+            raise RuntimeError(
+                "Rotary position embedding is employed. This has not yet been implemented for BigBird Attention. Exiting")
 
     def _calculate_global_query_attention(
         self,

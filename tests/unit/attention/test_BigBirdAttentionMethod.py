@@ -4,6 +4,7 @@ import torch
 from torch.nn import functional as F
 import pytorch_lightning as pl
 from attention_smithy.attention import BigBirdAttentionMethod
+from attention_smithy.numeric_embeddings import RotaryPositionEmbedding, ALiBiPositionEmbedding, NumericEmbeddingFacade
 
 
 @pytest.fixture
@@ -1765,6 +1766,39 @@ def test__BigBirdAttentionMethod__error_thrown_when_query_and_kv_block_sizes_dif
     empty_globals = None
     with pytest.raises(RuntimeError, match=re.escape(errorOutput)):
         bb._initialize_parameters(query, key, empty_globals, empty_globals)
+
+def test__BigBirdAttentionMethod__error_thrown_when_alibi_positional_encoding_provided():
+    bb = BigBirdAttentionMethod(
+        block_size_query=1, block_size_kv=1, local_window_extension_length=0
+    )
+    alibi_position_embedding = ALiBiPositionEmbedding(num_heads=4)
+    numeric_embedding_facade = NumericEmbeddingFacade(alibi_position=alibi_position_embedding)
+
+    errorOutput = "ALiBi numeric embedding is employed. This has not yet been implemented for BigBird Attention. Exiting"
+    with pytest.raises(RuntimeError, match=re.escape(errorOutput)):
+        bb(None, None, None, numeric_embedding_facade, None, None, None)
+
+def test__BigBirdAttentionMethod__error_thrown_when_alibi_custom_encoding_provided():
+    bb = BigBirdAttentionMethod(
+        block_size_query=1, block_size_kv=1, local_window_extension_length=0
+    )
+    alibi_position_embedding = ALiBiPositionEmbedding(num_heads=4)
+    numeric_embedding_facade = NumericEmbeddingFacade(alibi_custom=alibi_position_embedding)
+
+    errorOutput = "ALiBi numeric embedding is employed. This has not yet been implemented for BigBird Attention. Exiting"
+    with pytest.raises(RuntimeError, match=re.escape(errorOutput)):
+        bb(None, None, None, numeric_embedding_facade, None, None, None)
+
+def test__BigBirdAttentionMethod__error_thrown_when_rotary_positional_encoding_provided():
+    bb = BigBirdAttentionMethod(
+        block_size_query=1, block_size_kv=1, local_window_extension_length=0
+    )
+    rotary_position_embedding = RotaryPositionEmbedding(head_dimension=1)
+    numeric_embedding_facade = NumericEmbeddingFacade(rotary_position=rotary_position_embedding)
+
+    errorOutput = "Rotary position embedding is employed. This has not yet been implemented for BigBird Attention. Exiting"
+    with pytest.raises(RuntimeError, match=re.escape(errorOutput)):
+        bb(None, None, None, numeric_embedding_facade, None, None, None)
 
 
 def return_expected_result(expected_attention_scores, value):
