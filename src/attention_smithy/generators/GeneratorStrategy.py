@@ -1,11 +1,17 @@
 import torch
 from torch import nn
 from abc import ABC, abstractmethod
+from collections import defaultdict
 
 class GeneratorStrategy(ABC):
     """
     See GeneratorContext class.
     """
+    def __init__(self,
+                 no_repeat_ngram_size:int = 0,
+                 **kwargs,
+                 ) -> None:
+        self.no_repeat_ngram_size = no_repeat_ngram_size
 
     @abstractmethod
     def generate_sequence(
@@ -20,3 +26,25 @@ class GeneratorStrategy(ABC):
         See GeneratorContext class.
         """
         pass
+
+    def _apply_ngram_repeating_restraints(self, outputs, log_probabilities):
+        if self.no_repeat_ngram_size == 0:
+            return
+        batch_size = outputs.shape[0]
+        for i in range(batch_size):
+            sample = outputs[i]
+            if len(sample) < self.no_repeat_ngram_size:
+                continue
+            n_minus_1_sequence_to_next_token_dictionary = self._make_n_minus_1_sequence_to_next_token_dictionary(sample, self.no_repeat_ngram_size)
+            n_minus_1_sequence = tuple([int(x) for x in sample[-self.no_repeat_ngram_size+1:]])
+            avoided_values = n_minus_1_sequence_to_next_token_dictionary[n_minus_1_sequence]
+            for value in avoided_values:
+                log_probabilities[i, value] = float('-inf')
+
+    def _make_n_minus_1_sequence_to_next_token_dictionary(self, tensor, n):
+        n_minus_1_sequence_to_next_token_dictionary = defaultdict(set)
+        for i in range(n, len(tensor)):
+            key = tuple([int(x) for x in tensor[i-n+1:i]])
+            n_minus_1_sequence_to_next_token_dictionary[key].add(int(tensor[i]))
+        return n_minus_1_sequence_to_next_token_dictionary
+

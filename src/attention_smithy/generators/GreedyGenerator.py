@@ -35,7 +35,10 @@ class GreedyGenerator(GeneratorStrategy):
 
     def _add_best_next_token_to_output(self, model, output, step, **kwargs):
         all_logits = model.forward_decode(output, **kwargs)
+        if hasattr(all_logits, 'logits'):
+            all_logits = all_logits.logits
         next_token_logits = all_logits[:, step, :]
+        self._apply_ngram_repeating_restraints(output, next_token_logits)
         next_token_id = torch.argmax(next_token_logits, dim=-1)
         output = torch.cat([output, next_token_id.unsqueeze(-1)], dim=1)
         return output

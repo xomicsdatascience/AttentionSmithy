@@ -26,18 +26,12 @@ class GeneratorContext:
     """
     def __init__(self,
                  method: str = "greedy",
-                 maximum_sequence_length: int = 1000,
                  **kwargs,
                  ) -> None:
         """
         Args:
             method (str): A string indicating the type of generator to be used.
                 Options are currently "greedy" search and "beam" search.
-            maximum_sequence_length (int): The maximum number of tokens that can
-                be in the generated output sequence. Note that, if the target
-                input value already has non-start-token values, the generator
-                will only add the difference between what already exists and the
-                maximum_sequence_length.
         Attributes:
             _strategy (GeneratorStrategy): A child of the GeneratorStrategy
                 abstract class.
@@ -49,13 +43,13 @@ class GeneratorContext:
             self._strategy = BeamGenerator(**kwargs)
         if method == "beam_batch":
             self._strategy = BeamGeneratorAcrossBatch(**kwargs)
-        self.maximum_sequence_length = maximum_sequence_length
 
     def generate_sequence(
         self,
         model: nn.Module,
         end_token: int,
         tgt_input: torch.Tensor,
+        maximum_sequence_length: int = 50,
         **kwargs,
     ) -> torch.Tensor:
         """
@@ -69,6 +63,12 @@ class GeneratorContext:
             tgt_input (torch.Tensor): An initial target input of token IDs, of shape
                 (1, tgt_sequence_length). If there is no provided initial target
                 input, this value should be torch.Tensor([[start_token]]).
+            maximum_sequence_length (int): The maximum number of tokens that can
+                be in the generated output sequence. Note that, if the target
+                input value already has non-start-token values, the generator
+                will only add the difference between what already exists and the
+                maximum_sequence_length.
+
         Returns:
             torch.Tensor: 1D sequence of token integers.
         """
@@ -76,6 +76,6 @@ class GeneratorContext:
             model,
             end_token,
             tgt_input,
-            maximum_sequence_length=self.maximum_sequence_length,
+            maximum_sequence_length,
             **kwargs,
         )

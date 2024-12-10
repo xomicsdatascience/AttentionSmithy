@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import pytest
 from attention_smithy.generators import GeneratorContext, GeneratorModuleAbstractClass
+from attention_smithy.test_functions import generate_using_pretrained_model
 
 @pytest.fixture
 def generator_context():
@@ -56,3 +57,6 @@ def test__GreedyGenerator(generator_context, dummy_model, tgt_input_tensor, end_
     with torch.no_grad():
         output = generator_context.generate_sequence(dummy_model, end_token, tgt_input_tensor)
         assert torch.allclose(output, expected_output)
+
+def test__GreedyGenerator__using_pretrained_model():
+    generate_using_pretrained_model(method='greedy')

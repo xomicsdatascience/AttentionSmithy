@@ -3,6 +3,7 @@ from torch import nn
 import pytest
 import random
 from attention_smithy.generators import GeneratorContext, GeneratorModuleAbstractClass
+from attention_smithy.test_functions import generate_using_pretrained_model
 
 @pytest.fixture
 def beam_generator_context():
@@ -94,8 +95,11 @@ def end_token():
 def tgt_input_tensor(start_token, batch_size):
     return torch.full((batch_size, 1), start_token)
 
-def test__BeamGenerator(beam_generator_context, dummy_model, tgt_input_tensor, end_token, expected_output):
+def test__BeamGeneratorAcrossBatch(beam_generator_context, dummy_model, tgt_input_tensor, end_token, expected_output):
     args = (dummy_model, end_token, tgt_input_tensor)
     with torch.no_grad():
         output = beam_generator_context.generate_sequence(*args)
         assert torch.allclose(output, expected_output)
+
+def test__BeamGeneratorAcrossBatch__using_pretrained_model():
+    generate_using_pretrained_model(method='beam_batch')

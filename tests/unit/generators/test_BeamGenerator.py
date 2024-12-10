@@ -3,6 +3,7 @@ from torch import nn
 import pytest
 import random
 from attention_smithy.generators import GeneratorContext, GeneratorModuleAbstractClass
+from attention_smithy.test_functions import generate_using_pretrained_model
 
 @pytest.fixture
 def beam_generator_context():
@@ -100,3 +101,6 @@ def test__BeamGenerator(beam_generator_context, greedy_generator_context, dummy_
         output = beam_generator_context.generate_sequence(*args)
         assert torch.allclose(output, expected_output)
         assert not torch.allclose(greedy_output, expected_output)
+
+def test__BeamGenerator__using_pretrained_model():
+    generate_using_pretrained_model(method='beam')

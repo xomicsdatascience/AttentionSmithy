@@ -46,7 +46,7 @@ class BeamGenerator(GeneratorStrategy):
     def __init__(self,
                  beam_width:int = 3,
                  length_penalty_alpha:float = 0.6,
-                 max_sequence_length:int = 150,
+                 no_repeat_ngram_size: int = 0,
                  ) -> None:
         """
         Args:
@@ -54,14 +54,10 @@ class BeamGenerator(GeneratorStrategy):
                 generation loop. Default is 3.
             length_penalty_alpha (float): Adjusts the length penalty used in calculating
                 each score after a token is added. Default is 0.6.
-            max_sequence_length (int): The maximum sequence length to be generated. This
-                variable stops beam generation from growing out of hand during early
-                training steps.
         """
-        super().__init__()
+        super().__init__(no_repeat_ngram_size)
         self.beam_width = beam_width
         self.length_penalty_alpha = length_penalty_alpha
-        self.max_sequence_length = max_sequence_length
 
     def generate_sequence(
         self,
@@ -78,7 +74,7 @@ class BeamGenerator(GeneratorStrategy):
         beams, scores = self._run_input_through_model_and_attach_best_next_tokens_to_separate_beams(model, tgt_input, **kwargs)
         for step in range(tgt_input.size(1), maximum_sequence_length):
             beams, scores = self._add_tokens_to_branching_beams_and_prune_low_scoring_branches(beams, model, scores, step, **kwargs)
-            if torch.all(self.mask_for_beams_that_have_reached_the_end_token) or beams.shape[1] > self.max_sequence_length:
+            if torch.all(self.mask_for_beams_that_have_reached_the_end_token) or beams.shape[1] > maximum_sequence_length:
                 best_beam = self._identify_best_beam_from_all_finished_beams(beams, scores)
                 return best_beam
         best_beam_index = torch.argmax(scores)
@@ -167,8 +163,11 @@ class BeamGenerator(GeneratorStrategy):
     def _run_unfinished_beams_through_model_and_get_highest_probability_next_tokens(self, beams, step,
                                                                          model, **kwargs):
         all_logits = model.forward_decode(beams, **kwargs)
+        if hasattr(all_logits, 'logits'):
+            all_logits = all_logits.logits
         next_token_logits = all_logits[:, step, :]
         log_probabilities = torch.log(torch.softmax(next_token_logits, dim=-1))
+        self._apply_ngram_repeating_restraints(beams, log_probabilities)
         top_k_probabilities_across_beams, top_k_indices_across_beams = torch.topk(
             log_probabilities, self.beam_width, dim=-1
         )
