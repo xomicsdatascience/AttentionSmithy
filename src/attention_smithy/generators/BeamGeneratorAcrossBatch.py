@@ -21,6 +21,7 @@ class BeamGeneratorAcrossBatch(GeneratorStrategy):
                 generation loop. Default is 3.
             length_penalty_alpha (float): Adjusts the length penalty used in calculating
                 each score after a token is added. Default is 0.6.
+            no_repeat_ngram_size (int): see "Args" entry of the GeneratorStrategy class.
         """
         super().__init__(no_repeat_ngram_size)
         self.beam_width = beam_width

@@ -35,7 +35,6 @@ class GeneratorContext:
         Attributes:
             _strategy (GeneratorStrategy): A child of the GeneratorStrategy
                 abstract class.
-            maximum_sequence_length (int): See description above.
         """
         if method == "greedy":
             self._strategy = GreedyGenerator(**kwargs)
@@ -70,7 +69,7 @@ class GeneratorContext:
                 maximum_sequence_length.
 
         Returns:
-            torch.Tensor: 1D sequence of token integers.
+            torch.Tensor: 1D or 2D token integer sequence(s).
         """
         return self._strategy.generate_sequence(
             model,

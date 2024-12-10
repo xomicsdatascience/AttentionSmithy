@@ -11,6 +11,18 @@ class GeneratorStrategy(ABC):
                  no_repeat_ngram_size:int = 0,
                  **kwargs,
                  ) -> None:
+        """
+        Args:
+            no_repeat_ngram_size (int): The "n" of ngrams. Generator algorithms can sometimes
+                be caught in endlessly repeating loops, generating the same sentence or phrase
+                perpetually. This parameter is part of an algorithm designed to identify and
+                ban repeat segments. It determines the length of tokens that the
+                repeat-identifying algorithm will focus on. If set to 1, every individual token
+                must be unique. If set to 2, any 2-token combination must be unique. And
+                so on. The functions that use this parameter are defined below and used in
+                all generator strategy child classes.
+        """
+
         self.no_repeat_ngram_size = no_repeat_ngram_size
 
     @abstractmethod
