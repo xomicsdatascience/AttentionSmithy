@@ -48,7 +48,7 @@ class DecoderLayer(nn.Module):
                 name is used in encoder/decoder contexts to represent "source" data
                 as opposed to "target" data, as in translating English (source) to
                 French (target). The decoder focuses on decoding the "target" data.
-            src (torch.tensor): The source data that informs the results. In the
+            src (torch.Tensor): The source data that informs the results. In the
                 translation example above, "src" represents an encoded English
                 sentence to be translated into the "target" French language. Of shape
                 (batch_size, src_sequence_length, embedding_dimension).

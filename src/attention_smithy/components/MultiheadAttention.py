@@ -77,7 +77,7 @@ class MultiheadAttention(nn.Module):
                 (batch_size, number_of_heads, query_length, kv_length).
         """
 
-        key, query, value = self._prepare_matrices_for_attention(input_key, input_query, input_value)
+        query, key, value = self._prepare_matrices_for_attention(input_query, input_key, input_value)
         query, key = numeric_embedding_facade.apply_rotation_to_query_and_key_matrices(query, key)
         attention_output, attention_probabilities = self.attention_method(
             query, key, value, numeric_embedding_facade, **kwargs
@@ -86,7 +86,7 @@ class MultiheadAttention(nn.Module):
         output = self.out_weights(attention_output)
         return output, attention_probabilities
 
-    def _prepare_matrices_for_attention(self, input_key, input_query, input_value):
+    def _prepare_matrices_for_attention(self, input_query, input_key, input_value):
         batch_size, query_sequence_length, embedding_dimension = input_query.shape
         if embedding_dimension != self.embedding_dimension:
             raise ValueError(f"Embedding dimension of input tensors does not match the embedding dimension established in the MultiheadAttention initialization. Tensor: {embedding_dimension}, attention: {self.embedding_dimension}")
@@ -99,7 +99,7 @@ class MultiheadAttention(nn.Module):
         )
         key = key.view(batch_size, kv_sequence_length, self.number_of_heads, self.head_dimension).transpose(1, 2)
         value = value.view(batch_size, kv_sequence_length, self.number_of_heads, self.head_dimension).transpose(1, 2)
-        return key, query, value
+        return query, key, value
 
     def _reshape_attention_output_to_match_query_shape(self, attention_output, input_query):
         attention_output = (
