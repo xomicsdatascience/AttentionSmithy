@@ -76,13 +76,12 @@ class NumericEmbeddingFacade:
     def calculate_sinusoidal_and_learned_tokenizations(self,
                                                        x: torch.Tensor,
                                                        sinusoidal_custom_values: torch.Tensor=None,
-                                                       sequence_length: int=None,
                                                        **kwargs
                                                        ) -> torch.Tensor:
         output = torch.zeros_like(x).to('cpu')
         output += self.sinusoidal_position(x)
         output += self.sinusoidal_custom(x, sinusoidal_custom_values)
-        output += self.learned_position(sequence_length)
+        output += self.learned_position(x)
         return output.to(x.device)
 
     def apply_rotation_to_query_and_key_matrices(self,

@@ -2,7 +2,7 @@ import torch
 from attention_smithy.numeric_embeddings import ALiBiCustomEmbedding
 
 def test__ALiBiCustomEmbedding__general_test():
-    embedding = ALiBiCustomEmbedding(num_heads=1)
+    embedding = ALiBiCustomEmbedding(number_of_heads=1)
     query_values = torch.tensor([
         [1.0, 3.0, 4.0, 2.0, 0.0]
     ])
@@ -20,7 +20,7 @@ def test__ALiBiCustomEmbedding__general_test():
     assert torch.allclose(output, expected_output)
 
 def test__ALiBiCustomEmbedding__numHeads2():
-    embedding = ALiBiCustomEmbedding(num_heads=2)
+    embedding = ALiBiCustomEmbedding(number_of_heads=2)
     query_values = torch.tensor([
         [1.0, 3.0, 4.0, 2.0, 0.0]
     ])
@@ -47,7 +47,7 @@ def test__ALiBiCustomEmbedding__numHeads2():
     assert torch.allclose(output, expected_output)
 
 def test__ALiBiCustomEmbedding__numHeads2__slopeDegree4():
-    embedding = ALiBiCustomEmbedding(num_heads=2, slope_degree=4)
+    embedding = ALiBiCustomEmbedding(number_of_heads=2, slope_degree=4)
     query_values = torch.tensor([
         [1.0, 3.0, 4.0, 2.0, 0.0]
     ])
@@ -75,7 +75,7 @@ def test__ALiBiCustomEmbedding__numHeads2__slopeDegree4():
 
 
 def test__ALiBiCustomEmbedding__batchSize2__numHeads2():
-    embedding = ALiBiCustomEmbedding(num_heads=2)
+    embedding = ALiBiCustomEmbedding(number_of_heads=2)
     query_values = torch.tensor([
         [0.0, 1.0, 2.0, 3.0, 4.0],
         [1.0, 3.0, 4.0, 2.0, 0.0],

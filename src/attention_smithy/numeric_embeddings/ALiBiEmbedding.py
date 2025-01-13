@@ -1,5 +1,7 @@
 import math
 import torch
+import warnings
+
 
 class ALiBiEmbedding:
     """
@@ -16,12 +18,12 @@ class ALiBiEmbedding:
     """
 
     def __init__(self,
-                 num_heads: int,
-                 slope_degree: int = 2
+                 number_of_heads: int,
+                 slope_degree: int = 2,
                  ) -> None:
         """
         Args:
-            num_heads (int): The expected number of heads used in multihead attention.
+            number_of_heads (int): The expected number of heads used in multihead attention.
             slope_degree (int, optional): The degree of difference between heads. This
                 corresponds to the calculation for "m" in the paper. See "slope_m_values"
                 attribute for an example. Defaults to 2 (1/2).
@@ -29,21 +31,45 @@ class ALiBiEmbedding:
             slope_m_values (torch.Tensor): A tensor containing a single scale value for
                 each head. For 4 heads and a slope_degree of 2, this would be
                 [0.5, 0.25, 0.125, 0.0625]. For 2 heads and a slope_degree of 4,
-                this would be [0.25, 0.0625]. Of shape (num_heads, 1, 1).
+                this would be [0.25, 0.0625]. Of shape (number_of_heads, 1, 1).
         """
 
-        self.slope_m_values = self._get_slopes(num_heads=num_heads, slope_degree=slope_degree)
+        self.slope_m_values = self._get_slopes(number_of_heads=number_of_heads, slope_degree=slope_degree)
 
     def _determine_negative_distance_matrix(self, query_values, kv_values):
         distance_matrix = query_values - kv_values
         purely_negative_distance_matrix = torch.where(distance_matrix > 0, -distance_matrix, distance_matrix)
         return purely_negative_distance_matrix
 
-    def _get_slopes(self, num_heads, slope_degree):
-        slopes = (1 / slope_degree) ** torch.arange(1, num_heads + 1)
-        return slopes.view(num_heads, 1, 1)
+    def _get_slopes(self, number_of_heads, slope_degree):
+        slopes = (1 / slope_degree) ** torch.arange(1, number_of_heads + 1)
+        return slopes.view(number_of_heads, 1, 1)
 
 class ALiBiPositionEmbedding(ALiBiEmbedding):
+    def __init__(self,
+                 number_of_heads: int,
+                 slope_degree: int = 2,
+                 allow_cross_attention: bool = False,
+                 ) -> None:
+        """
+        Args:
+            number_of_heads (int): See parent class.
+            slope_degree (int, optional): See parent class.
+            allow_cross_attention (bool, optional): Determines whether or not alibi position embedding should apply
+                to cross attention blocks (where the query and key sequence lengths are different). To the author's
+                knowledge, allowing this is untested and likely to end in error, but the option is available for future
+                testing.
+        Attributes:
+            slope_m_values (torch.Tensor): A tensor containing a single scale value for
+                each head. For 4 heads and a slope_degree of 2, this would be
+                [0.5, 0.25, 0.125, 0.0625]. For 2 heads and a slope_degree of 4,
+                this would be [0.25, 0.0625]. Of shape (number_of_heads, 1, 1).
+        """
+
+        super().__init__(number_of_heads, slope_degree)
+        self.allow_cross_attention = allow_cross_attention
+        self.has_warned_that_cross_attention_was_skipped = False
+
     def __call__(self,
                  query_length: int,
                  kv_length: int,
@@ -62,12 +88,15 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
                 No positive values exist in these matrices - the idea is to pay
                 "less" attention to tokens that are farther away. How far depends
                 on the head. Applies across samples in a batch. Of shape
-                (num_heads, query_length, kv_length), the last three dimensions
+                (number_of_heads, query_length, kv_length), the last three dimensions
                 of the attention_score value in the standard attention method.
                 It is broadcast across samples in a batch.
         """
-        if query_length != kv_length:
-            raise ValueError(f"ALiBi Position Embedding failed. Query and Key sequence length must be identical, as in self-attention. Query length: {query_length}, Key length: {kv_length}")
+        if query_length != kv_length and not self.allow_cross_attention:
+            warnings.warn(
+                'ALiBi position encoding used, but not enabled for cross attention by default. Set `allow_cross_attention=True` in initiliazation of ALiBiPositionEmbedding if you want to change this behavior (not recommended).')
+        if query_length != kv_length and self.allow_cross_attention:
+                return torch.zeros((query_length, kv_length))
         query_positions = torch.arange(query_length)[:, None]
         kv_positions = torch.arange(kv_length)[None, :]
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(query_positions, kv_positions)
@@ -87,7 +116,7 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
         Returns:
             torch.Tensor: see ALiBiPositionEmbedding __call__ return value. The
                 only distinction is that this output is of shape
-                (batch_size, num_heads, query_length, kv_length), corresponding to
+                (batch_size, number_of_heads, query_length, kv_length), corresponding to
                 the exact shape of the attention_score value in the standard attention method.
         """
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(custom_query_values[:, :, None], custom_key_values[:, None, :])

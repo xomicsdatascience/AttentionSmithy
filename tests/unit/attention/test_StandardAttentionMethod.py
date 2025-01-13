@@ -274,7 +274,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2_
     assert torch.allclose(output, expected_output, atol=1e-4)
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_position():
-    alibi_position = ALiBiPositionEmbedding(num_heads=1)
+    alibi_position = ALiBiPositionEmbedding(number_of_heads=1)
     numeric_embedding_facade = NumericEmbeddingFacade(alibi_position=alibi_position)
 
     q = torch.tensor([[[
@@ -305,7 +305,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_posi
     assert torch.allclose(output, expected_output, atol=1e-4)
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_custom():
-    alibi_custom = ALiBiCustomEmbedding(num_heads=1)
+    alibi_custom = ALiBiCustomEmbedding(number_of_heads=1)
     numeric_embedding_facade = NumericEmbeddingFacade(alibi_custom=alibi_custom)
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],

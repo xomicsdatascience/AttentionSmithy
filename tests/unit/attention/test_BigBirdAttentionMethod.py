@@ -1771,7 +1771,7 @@ def test__BigBirdAttentionMethod__error_thrown_when_alibi_positional_encoding_pr
     bb = BigBirdAttentionMethod(
         block_size_query=1, block_size_kv=1, local_window_extension_length=0
     )
-    alibi_position_embedding = ALiBiPositionEmbedding(num_heads=4)
+    alibi_position_embedding = ALiBiPositionEmbedding(number_of_heads=4)
     numeric_embedding_facade = NumericEmbeddingFacade(alibi_position=alibi_position_embedding)
 
     errorOutput = "ALiBi numeric embedding is employed. This has not yet been implemented for BigBird Attention. Exiting"
@@ -1782,7 +1782,7 @@ def test__BigBirdAttentionMethod__error_thrown_when_alibi_custom_encoding_provid
     bb = BigBirdAttentionMethod(
         block_size_query=1, block_size_kv=1, local_window_extension_length=0
     )
-    alibi_position_embedding = ALiBiPositionEmbedding(num_heads=4)
+    alibi_position_embedding = ALiBiPositionEmbedding(number_of_heads=4)
     numeric_embedding_facade = NumericEmbeddingFacade(alibi_custom=alibi_position_embedding)
 
     errorOutput = "ALiBi numeric embedding is employed. This has not yet been implemented for BigBird Attention. Exiting"

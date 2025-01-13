@@ -23,7 +23,7 @@ class LearnedPositionEmbedding(nn.Module):
 
 
     def forward(self,
-                sequence_length: int,
+                x: torch.Tensor,
                 ) -> torch.Tensor:
         """
         Args:
@@ -32,5 +32,6 @@ class LearnedPositionEmbedding(nn.Module):
             torch.Tensor: An output tensor of shape
                 (batch_size, sequence_length, embedding_dimension)
         """
+        sequence_length = x.shape[1]
         position_ids = torch.arange(sequence_length, device=self.embedding.weight.device)
         return self.embedding(position_ids)

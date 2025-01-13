@@ -2,10 +2,11 @@ import pytest
 import re
 import torch
 from attention_smithy.numeric_embeddings import ALiBiPositionEmbedding
+import warnings
 
 def test__ALiBiPositionEmbedding__general_test():
     num_heads = 2
-    embedding = ALiBiPositionEmbedding(num_heads=num_heads)
+    embedding = ALiBiPositionEmbedding(number_of_heads=num_heads)
     output = embedding(query_length=5, kv_length=5)
     expected_output = torch.tensor([
         [
@@ -27,7 +28,7 @@ def test__ALiBiPositionEmbedding__general_test():
 
 def test__ALiBiPositionEmbedding__slopeDegree4():
     num_heads = 2
-    embedding = ALiBiPositionEmbedding(num_heads=num_heads, slope_degree=4)
+    embedding = ALiBiPositionEmbedding(number_of_heads=num_heads, slope_degree=4)
     output = embedding(query_length=5, kv_length=5)
     expected_output = torch.tensor([
         [
@@ -47,10 +48,18 @@ def test__ALiBiPositionEmbedding__slopeDegree4():
     ])
     assert torch.allclose(output, expected_output)
 
-def test__ALiBiPositionEmbedding__query_and_kv_lengths_differ_throws_value_error():
+def test__ALiBiPositionEmbedding__query_and_kv_lengths_differ__no_cross_attention_allowed_throws_warning():
     query_length = 4
     kv_length = 5
-    embedding = ALiBiPositionEmbedding(num_heads=2, slope_degree=4)
-    errorOutput = f"ALiBi Position Embedding failed. Query and Key sequence length must be identical, as in self-attention. Query length: {query_length}, Key length: {kv_length}"
-    with pytest.raises(ValueError, match=re.escape(errorOutput)):
+    embedding = ALiBiPositionEmbedding(number_of_heads=2, slope_degree=4)
+    warningOutput = "ALiBi position encoding used, but not enabled for cross attention by default. Set `allow_cross_attention=True` in initiliazation of ALiBiPositionEmbedding if you want to change this behavior (not recommended)."
+    with pytest.warns(UserWarning, match=re.escape(warningOutput)):
         embedding(query_length=query_length, kv_length=kv_length)
+
+def test__ALiBiPositionEmbedding__query_and_kv_lengths_differ__cross_attention_allowed_does_not_throw_warning():
+    query_length = 4
+    kv_length = 5
+    embedding = ALiBiPositionEmbedding(number_of_heads=2, slope_degree=4, allow_cross_attention=True)
+    with warnings.catch_warnings(record=True) as w:
+        embedding(query_length=query_length, kv_length=kv_length)
+        assert len(w) == 0
