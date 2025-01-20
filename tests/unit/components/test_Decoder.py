@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 from attention_smithy.components import (
     MultiheadAttention,
     FeedForwardNetwork,
@@ -37,3 +38,57 @@ def test__Decoder():
     output = decoder(input_tensor, input_tensor, tgt_padding_mask=None, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
 
     assert input_tensor.shape == output.shape
+
+class SimpleDecoderLayer(nn.Module):
+    def __init__(self, embedding_dimension):
+        super().__init__()
+        self.embedding_dimension = embedding_dimension
+        self.linear = nn.Linear(embedding_dimension, embedding_dimension)
+
+
+def test_freeze_layers():
+    embedding_dimension = 10
+    layer = SimpleDecoderLayer(embedding_dimension)
+    number_of_layers = 3
+    decoder = Decoder(layer, number_of_layers)
+
+    decoder.freeze_layers(2)
+
+    for idx, module in enumerate(decoder.layers):
+        for param in module.parameters():
+            if idx < 2:
+                assert not param.requires_grad, f"Layer {idx} should be frozen"
+            else:
+                assert param.requires_grad, f"Layer {idx} should not be frozen"
+
+def test_freeze_all_layers():
+    embedding_dimension = 10
+    layer = SimpleDecoderLayer(embedding_dimension)
+    number_of_layers = 3
+    decoder = Decoder(layer, number_of_layers)
+    decoder.freeze_layers(3)
+
+    for module in decoder.layers:
+        for param in module.parameters():
+            assert not param.requires_grad, "All layers should be frozen"
+
+def test_freeze_no_layers():
+    embedding_dimension = 10
+    layer = SimpleDecoderLayer(embedding_dimension)
+    number_of_layers = 3
+    decoder = Decoder(layer, number_of_layers)
+    decoder.freeze_layers(0)
+
+    for module in decoder.layers:
+        for param in module.parameters():
+            assert param.requires_grad, "No layers should be frozen"
+
+def test_freeze_more_layers_than_exist():
+    embedding_dimension = 10
+    layer = SimpleDecoderLayer(embedding_dimension)
+    number_of_layers = 3
+    decoder = Decoder(layer, number_of_layers)
+    decoder.freeze_layers(5)
+    for module in decoder.layers:
+        for param in module.parameters():
+            assert not param.requires_grad, "All layers should be frozen"

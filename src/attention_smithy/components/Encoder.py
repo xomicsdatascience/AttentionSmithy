@@ -36,3 +36,15 @@ class Encoder(nn.Module):
         for layer in self.layers:
             src = layer(src, src_padding_mask, **kwargs)
         return self.norm(src)
+
+    def freeze_layers(self, number_of_layers):
+        """
+        Args:
+            number_of_layers (int): The number of layers to be frozen,
+                starting with layer index 0.
+        """
+        for idx, module in enumerate(self.layers):
+            if idx < number_of_layers:
+                for param in module.parameters():
+                    param.requires_grad = False
+

@@ -38,3 +38,15 @@ class Decoder(nn.Module):
         for layer in self.layers:
             tgt = layer(tgt, src, tgt_padding_mask, src_padding_mask, **kwargs)
         return self.norm(tgt)
+
+    def freeze_layers(self, number_of_layers):
+        """
+        Args:
+            number_of_layers (int): The number of layers to be frozen,
+                starting with layer index 0.
+        """
+        for idx, module in enumerate(self.layers):
+            if idx < number_of_layers:
+                for param in module.parameters():
+                    param.requires_grad = False
+
