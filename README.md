@@ -8,20 +8,19 @@ The baseline code was originally inspired by [The Annotated Transformer](https:/
 
 ## AttentionSmithy Components
 
-Here is a visual depiction of how each component fits into the original whole, using Figure 1 from Attention Is All You Need.
+Here is a visual depiction of the different components of a transformer model, using Figure 1 from Attention Is All You Need as reference.
 
-![Presentation1](https://github.com/user-attachments/assets/086a7a10-9dc5-4a68-b966-b169c5dbc2c0)
+![Screenshot 2025-02-10 at 3 53 42 PM](https://github.com/user-attachments/assets/29acea66-c865-48fd-9cde-ce55a2be08af)
 
 ## AttentionSmithy Numeric Embedding
 
 Here is a visual depiction of where each positional or numeric embedding fits in to the original model.
 
-![Presentation2](https://github.com/user-attachments/assets/ccd45af4-8cd7-4922-b577-2c6b32d1a8b6)
+![Screenshot 2025-02-10 at 3 49 43 PM](https://github.com/user-attachments/assets/4a7d1983-6594-4953-8936-2b438de5de82)
 
 ## AttentionSmithy Attention Methods
 
-Here is a basic visual of possible attention mechanisms offered in AttentionSmithy. This includes Big Bird attention, from [Big Bird: Transformers for Longer Sequences](https://arxiv.org/abs/2007.14062).
+Here is a basic visual of possible attention mechanisms AttentionSmithy has been designed to incorporate in future development efforts. The provided examples include [Longformer attention](https://arxiv.org/abs/2004.05150) and [Big Bird attention](https://arxiv.org/abs/2007.14062).
 
-![Presentation3](https://github.com/user-attachments/assets/a7edb99f-6e1f-4370-9723-cf33dfa54dae)
-
+![Screenshot 2025-02-10 at 3 45 58 PM](https://github.com/user-attachments/assets/8dc33378-4b53-456e-8abb-22ab42c7f6c1)
 
