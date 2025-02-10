@@ -2,7 +2,7 @@ import pytest
 import torch
 from attention_smithy.components import EncoderLayer, MultiheadAttention, FeedForwardNetwork
 from attention_smithy.attention import StandardAttentionMethod, BigBirdAttentionMethod
-from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
+from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 
 @pytest.fixture
 def embedding_dimension():
@@ -34,8 +34,8 @@ def dropout():
     return 0.0
 
 @pytest.fixture
-def numeric_embedding_facade():
-    return NumericEmbeddingFacade()
+def numeric_embedding_manager():
+    return NumericEmbeddingManager()
 
 @pytest.fixture
 def feed_forward_network(embedding_dimension, feed_forward_dimension):
@@ -68,15 +68,15 @@ def big_bird_encoder_layer(embedding_dimension, big_bird_multihead_attention, fe
 def global_tokens(batch_size, num_blocks, block_size):
     return torch.zeros((batch_size, num_blocks*block_size))
 
-def test__EncoderLayer__works_with_standard_self_attention(input_tensor, numeric_embedding_facade, standard_encoder_layer):
-    output = standard_encoder_layer(src=input_tensor, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
+def test__EncoderLayer__works_with_standard_self_attention(input_tensor, numeric_embedding_manager, standard_encoder_layer):
+    output = standard_encoder_layer(src=input_tensor, src_padding_mask=None, numeric_embedding_manager=numeric_embedding_manager)
     assert output.shape == input_tensor.shape
 
-def test__EncoderLayer__works_with_big_bird_self_attention(input_tensor, numeric_embedding_facade, big_bird_encoder_layer, global_tokens):
+def test__EncoderLayer__works_with_big_bird_self_attention(input_tensor, numeric_embedding_manager, big_bird_encoder_layer, global_tokens):
     output = big_bird_encoder_layer(
         src=input_tensor,
         src_padding_mask=None,
-        numeric_embedding_facade=numeric_embedding_facade,
+        numeric_embedding_manager=numeric_embedding_manager,
         global_tokens_query=global_tokens,
         global_tokens_kv=global_tokens,
     )

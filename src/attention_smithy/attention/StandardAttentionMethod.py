@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from attention_smithy.utils import create_causal_mask
-from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
+from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 
 class StandardAttentionMethod(nn.Module):
     """
@@ -32,7 +32,7 @@ class StandardAttentionMethod(nn.Module):
         q: torch.Tensor,
         k: torch.Tensor,
         v: torch.Tensor,
-        numeric_embedding_facade: NumericEmbeddingFacade,
+        numeric_embedding_manager: NumericEmbeddingManager,
         padding_and_loss_attention_mask: torch.Tensor,
         **kwargs,
     ):
@@ -44,7 +44,7 @@ class StandardAttentionMethod(nn.Module):
                 Note that the embedding dimension can be calculated by multiplying (num_heads * head_dim)
             k (torch.Tensor): The key tensor embedding, of shape (batch_size, num_heads, kv_length, head_dim)
             v (torch.Tensor): The value tensor embedding, of shape (batch_size, num_heads, kv_length, head_dim)
-            numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
+            numeric_embedding_manager (NumericEmbeddingManager): Facade class that contains
                 all numeric embedding methods (including position). Required to enable
                 alibi embedding.
             padding_and_loss_attention_mask (torch.Tensor, optional): The padding attention mask, of shape
@@ -60,7 +60,7 @@ class StandardAttentionMethod(nn.Module):
                 (batch_size, number_of_heads, query_length, kv_length).
         """
         attention_scores = self._calculate_query_by_key_attention_scores(q, k)
-        attention_scores += numeric_embedding_facade.calculate_alibi_attention_score_distances(q, k, **kwargs)
+        attention_scores += numeric_embedding_manager.calculate_alibi_attention_score_distances(q, k, **kwargs)
         attention_scores = self._apply_masking_to_attention_scores(
             attention_scores, padding_and_loss_attention_mask
         )

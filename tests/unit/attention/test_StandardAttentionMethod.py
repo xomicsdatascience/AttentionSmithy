@@ -1,14 +1,14 @@
 import pytest
 import torch
 from attention_smithy.attention import StandardAttentionMethod
-from attention_smithy.numeric_embeddings import NumericEmbeddingFacade, ALiBiPositionEmbedding, ALiBiCustomEmbedding
+from attention_smithy.numeric_embeddings import NumericEmbeddingManager, ALiBiPositionEmbedding, ALiBiCustomEmbedding
 
 @pytest.fixture
-def numeric_embedding_facade():
-    return NumericEmbeddingFacade()
+def numeric_embedding_manager():
+    return NumericEmbeddingManager()
 
 
-def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2(numeric_embedding_facade):
+def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2(numeric_embedding_manager):
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
         [4e-1, 5e-1, 6e-1]
@@ -23,7 +23,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2(numeric_emb
     ]]])
     attention = StandardAttentionMethod()
     output, attn_probs = attention(
-        q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+        q, k, v, numeric_embedding_manager=numeric_embedding_manager,
         padding_and_loss_attention_mask=None)
 
     expected_attn_probs = torch.tensor([[[
@@ -38,7 +38,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2(numeric_emb
     assert torch.allclose(attn_probs, expected_attn_probs, atol=1e-4)
     assert torch.allclose(output, expected_output, atol=1e-4)
 
-def test__StandardAttentionMethod__dimension3_queryLength2_kvLength4(numeric_embedding_facade):
+def test__StandardAttentionMethod__dimension3_queryLength2_kvLength4(numeric_embedding_manager):
     q = torch.tensor([[[[1e-1, 2e-1, 3e-1],
                         [4e-1, 5e-1, 6e-1]]]])
     k = torch.tensor([[[[1e-1, 2e-1, 3e-1],
@@ -51,7 +51,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength4(numeric_emb
                         [4e-1, 5e-1, 6e-1]]]])
     attention = StandardAttentionMethod()
 
-    output, attn_probs = attention(q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+    output, attn_probs = attention(q, k, v, numeric_embedding_manager=numeric_embedding_manager,
                                    padding_and_loss_attention_mask=None)
 
     expected_attn_probs = torch.tensor([[[
@@ -66,7 +66,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength4(numeric_emb
     assert torch.allclose(attn_probs, expected_attn_probs, atol=1e-4)
     assert torch.allclose(output, expected_output, atol=1e-4)
 
-def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__apply_causal_masking(numeric_embedding_facade):
+def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__apply_causal_masking(numeric_embedding_manager):
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
         [4e-1, 5e-1, 6e-1]
@@ -80,7 +80,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__apply_caus
         [4e-1, 5e-1, 6e-1]
     ]]])
     attention = StandardAttentionMethod(is_causal_masking=True)
-    output, attn_probs = attention(q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+    output, attn_probs = attention(q, k, v, numeric_embedding_manager=numeric_embedding_manager,
                                    padding_and_loss_attention_mask=None)
 
     expected_attn_probs = torch.tensor([[[
@@ -96,7 +96,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__apply_caus
     assert torch.allclose(attn_probs, expected_attn_probs, atol=1e-4)
     assert torch.allclose(output, expected_output, atol=1e-4)
 
-def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__batchSize2(numeric_embedding_facade):
+def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__batchSize2(numeric_embedding_manager):
     q = torch.tensor([
         [[
             [1e-1, 2e-1, 3e-1],
@@ -128,7 +128,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__batchSize2
         ]]
     ])
     attention = StandardAttentionMethod()
-    output, attn_probs = attention(q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+    output, attn_probs = attention(q, k, v, numeric_embedding_manager=numeric_embedding_manager,
                                    padding_and_loss_attention_mask=None)
 
     expected_attn_probs = torch.tensor([
@@ -155,7 +155,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__batchSize2
     assert torch.allclose(attn_probs, expected_attn_probs, atol=1e-4)
     assert torch.allclose(output, expected_output, atol=1e-4)
 
-def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2(numeric_embedding_facade):
+def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2(numeric_embedding_manager):
     q = torch.tensor([[
         [
             [1e-1, 2e-1, 3e-1],
@@ -187,7 +187,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2(
         ]
     ]])
     attention = StandardAttentionMethod()
-    output, attn_probs = attention(q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+    output, attn_probs = attention(q, k, v, numeric_embedding_manager=numeric_embedding_manager,
                                    padding_and_loss_attention_mask=None)
 
     expected_attn_probs = torch.tensor([[
@@ -214,7 +214,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2(
     assert torch.allclose(attn_probs, expected_attn_probs, atol=1e-4)
     assert torch.allclose(output, expected_output, atol=1e-4)
 
-def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2__apply_causal_masking(numeric_embedding_facade):
+def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2__apply_causal_masking(numeric_embedding_manager):
     q = torch.tensor([[
         [
             [1e-1, 2e-1, 3e-1],
@@ -246,7 +246,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2_
         ]
     ]])
     attention = StandardAttentionMethod(is_causal_masking=True)
-    output, attn_probs = attention(q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+    output, attn_probs = attention(q, k, v, numeric_embedding_manager=numeric_embedding_manager,
                                    padding_and_loss_attention_mask=None)
 
     expected_attn_probs = torch.tensor([[
@@ -275,7 +275,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2_
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_position():
     alibi_position = ALiBiPositionEmbedding(number_of_heads=1)
-    numeric_embedding_facade = NumericEmbeddingFacade(alibi_position=alibi_position)
+    numeric_embedding_manager = NumericEmbeddingManager(alibi_position=alibi_position)
 
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
@@ -290,7 +290,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_posi
         [4e-1, 5e-1, 6e-1]
     ]]])
     attention = StandardAttentionMethod()
-    output, attn_probs = attention(q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+    output, attn_probs = attention(q, k, v, numeric_embedding_manager=numeric_embedding_manager,
                                    padding_and_loss_attention_mask=None)
 
     expected_attn_probs = torch.tensor([[[
@@ -306,7 +306,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_posi
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_custom():
     alibi_custom = ALiBiCustomEmbedding(number_of_heads=1)
-    numeric_embedding_facade = NumericEmbeddingFacade(alibi_custom=alibi_custom)
+    numeric_embedding_manager = NumericEmbeddingManager(alibi_custom=alibi_custom)
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
         [4e-1, 5e-1, 6e-1]
@@ -327,7 +327,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_cust
         [2.0, 4.0]
     ])
 
-    output, attn_probs = attention(q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+    output, attn_probs = attention(q, k, v, numeric_embedding_manager=numeric_embedding_manager,
                                    alibi_query_values=custom_query_values,
                                    alibi_key_values=custom_key_values,
                                    padding_and_loss_attention_mask=None)
@@ -345,7 +345,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_cust
 
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_mask_for_padding_tokens_at_end_work(
-        numeric_embedding_facade):
+        numeric_embedding_manager):
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
         [4e-1, 5e-1, 6e-1]
@@ -364,7 +364,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_ma
 
     attention = StandardAttentionMethod()
     output, attn_probs = attention(
-        q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+        q, k, v, numeric_embedding_manager=numeric_embedding_manager,
         padding_and_loss_attention_mask=padding_and_loss_attention_mask)
 
     expected_attn_probs = torch.tensor([[[
@@ -381,7 +381,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_ma
 
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_mask_for_padding_tokens_at_end_work(
-        numeric_embedding_facade):
+        numeric_embedding_manager):
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
         [4e-1, 5e-1, 6e-1]
@@ -400,7 +400,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_ma
 
     attention = StandardAttentionMethod()
     output, attn_probs = attention(
-        q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+        q, k, v, numeric_embedding_manager=numeric_embedding_manager,
         padding_and_loss_attention_mask=padding_and_loss_attention_mask)
 
     expected_attn_probs = torch.tensor([[[
@@ -416,7 +416,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_ma
     assert torch.allclose(output, expected_output, atol=1e-4)
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_mask_for_padding_tokens_at_end_work__batchSize2_numHeads2(
-        numeric_embedding_facade):
+        numeric_embedding_manager):
     q = torch.tensor([
         [
             [
@@ -490,7 +490,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__padding_ma
 
     attention = StandardAttentionMethod()
     output, attn_probs = attention(
-        q, k, v, numeric_embedding_facade=numeric_embedding_facade,
+        q, k, v, numeric_embedding_manager=numeric_embedding_manager,
         padding_and_loss_attention_mask=padding_and_loss_attention_mask)
 
     expected_attn_probs = torch.tensor([

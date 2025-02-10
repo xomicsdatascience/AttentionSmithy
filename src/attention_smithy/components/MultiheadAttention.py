@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from typing import Union
 from attention_smithy.attention import BigBirdAttentionMethod, StandardAttentionMethod
-from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
+from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 
 class MultiheadAttention(nn.Module):
     """
@@ -52,7 +52,7 @@ class MultiheadAttention(nn.Module):
                 input_query: torch.Tensor,
                 input_key: torch.Tensor,
                 input_value: torch.Tensor,
-                numeric_embedding_facade: NumericEmbeddingFacade,
+                numeric_embedding_manager: NumericEmbeddingManager,
                 **kwargs
                 ) -> torch.Tensor:
         """
@@ -66,7 +66,7 @@ class MultiheadAttention(nn.Module):
             input_value (torch.Tensor): The tokenized input meant to be analyzed as the
                 "value" matrix described in the original paper, of shape
                 (batch_size, kv_sequence_length, embedding_dimension)
-            numeric_embedding_facade (NumericEmbeddingFacade): Facade class that contains
+            numeric_embedding_manager (NumericEmbeddingManager): Manager class that contains
                 all numeric embedding methods (including position). Required to enable
                 rotary embedding.
         Returns:
@@ -78,9 +78,9 @@ class MultiheadAttention(nn.Module):
         """
 
         query, key, value = self._prepare_matrices_for_attention(input_query, input_key, input_value)
-        query, key = numeric_embedding_facade.apply_rotation_to_query_and_key_matrices(query, key)
+        query, key = numeric_embedding_manager.apply_rotation_to_query_and_key_matrices(query, key)
         attention_output, attention_probabilities = self.attention_method(
-            query, key, value, numeric_embedding_facade, **kwargs
+            query, key, value, numeric_embedding_manager, **kwargs
         )
         attention_output = self._reshape_attention_output_to_match_query_shape(attention_output, input_query)
         output = self.out_weights(attention_output)

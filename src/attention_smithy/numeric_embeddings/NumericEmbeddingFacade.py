@@ -24,9 +24,9 @@ class PassthroughEmbedding:
     def __call__(self, x: torch.Tensor, *args, **kwargs):
         return x
 
-class NumericEmbeddingFacade:
+class NumericEmbeddingManager:
     """
-    NumericEmbeddingFacade keeps all numeric-based encoding in a single accessible location.
+    NumericEmbeddingManager keeps all numeric-based encoding in a single accessible location.
 
     Multiple positional embedding strategies have been proposed, and are often addressed
         interchangably. For example, you might use sinusoidal positional embeddings, or

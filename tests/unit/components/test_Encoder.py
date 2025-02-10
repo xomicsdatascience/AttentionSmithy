@@ -8,7 +8,7 @@ from attention_smithy.components import (
     Encoder
 )
 from attention_smithy.attention import StandardAttentionMethod
-from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
+from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 
 def test__Encoder():
     batch_size = 32
@@ -30,8 +30,8 @@ def test__Encoder():
     assert not torch.equal(encoder.layers[0].self_attention_sublayer.sublayer_module.out_weights.weight, encoder.layers[1].self_attention_sublayer.sublayer_module.out_weights.weight)
 
     input_tensor = torch.rand((batch_size, sequence_length, embedding_dimension))
-    numeric_embedding_facade = NumericEmbeddingFacade()
-    output = encoder(input_tensor, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
+    numeric_embedding_manager = NumericEmbeddingManager()
+    output = encoder(input_tensor, src_padding_mask=None, numeric_embedding_manager=numeric_embedding_manager)
     assert input_tensor.shape == output.shape
 
 class SimpleEncoderLayer(nn.Module):

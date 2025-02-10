@@ -8,7 +8,7 @@ from attention_smithy.components import (
     Decoder
 )
 from attention_smithy.attention import StandardAttentionMethod
-from attention_smithy.numeric_embeddings import NumericEmbeddingFacade
+from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 
 def test__Decoder():
     batch_size = 32
@@ -34,8 +34,8 @@ def test__Decoder():
 
 
     input_tensor = torch.rand((batch_size, sequence_length, embedding_dimension))
-    numeric_embedding_facade = NumericEmbeddingFacade()
-    output = decoder(input_tensor, input_tensor, tgt_padding_mask=None, src_padding_mask=None, numeric_embedding_facade=numeric_embedding_facade)
+    numeric_embedding_manager = NumericEmbeddingManager()
+    output = decoder(input_tensor, input_tensor, tgt_padding_mask=None, src_padding_mask=None, numeric_embedding_manager=numeric_embedding_manager)
 
     assert input_tensor.shape == output.shape
 
