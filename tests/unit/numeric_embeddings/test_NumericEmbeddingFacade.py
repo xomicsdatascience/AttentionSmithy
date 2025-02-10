@@ -1,6 +1,6 @@
 import pytest
 import torch
-from attention_smithy.numeric_embeddings.NumericEmbeddingFacade import NoAddEmbedding, PassthroughEmbedding
+from attention_smithy.numeric_embeddings.NumericEmbeddingManager import NoAddEmbedding, PassthroughEmbedding
 
 @pytest.fixture
 def input_tensor():
