@@ -100,7 +100,7 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
         query_positions = torch.arange(query_length)[:, None]
         kv_positions = torch.arange(kv_length)[None, :]
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(query_positions, kv_positions)
-        return purely_negative_distance_matrix * self.slope_m_values
+        return purely_negative_distance_matrix.to(self.slope_m_values.device) * self.slope_m_values
 
 class ALiBiCustomEmbedding(ALiBiEmbedding):
     def __call__(self,
