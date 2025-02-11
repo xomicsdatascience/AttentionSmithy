@@ -82,7 +82,7 @@ class NumericEmbeddingManager:
         output += self.sinusoidal_position(x)
         output += self.sinusoidal_custom(x, sinusoidal_custom_values)
         output += self.learned_position(x)
-        return output.to(x.device)
+        return output
 
     def apply_rotation_to_query_and_key_matrices(self,
                                                  query: torch.Tensor,
