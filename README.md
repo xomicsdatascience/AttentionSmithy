@@ -9,6 +9,17 @@ The baseline code was originally inspired by [The Annotated Transformer](https:/
 - [machine translation](https://github.com/xomicsdatascience/machine-translation), including an neural architecture search (NAS) setup
 - [geneformer](https://github.com/xomicsdatascience/geneformer)
 
+## Future Directions
+<div align="center">
+
+---
+🤝 **Join the conversation!** 🤝
+
+As you read and have ideas, please go to the [Discussions tab](https://github.com/xomicsdatascience/AttentionSmithy/discussions) of this repository and share them with us. We have ideas for future extensions and applications, and would love your input.
+
+---
+</div>
+
 ## AttentionSmithy Components
 
 Here is a visual depiction of the different components of a transformer model, using Figure 1 from Attention Is All You Need as reference.
