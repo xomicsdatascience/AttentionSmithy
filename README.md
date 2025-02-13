@@ -4,7 +4,10 @@ The [Attention Is All You Need](https://arxiv.org/pdf/1706.03762) paper complete
 
 AttentionSmithy was designed as a platform that allows for flexible experimentation with the attention mechanism in a variety of applications. This includes the ability to use a multitude of positional embeddings, variations on the attention mechanism, and others.
 
-The baseline code was originally inspired by [The Annotated Transformer](https://nlp.seas.harvard.edu/annotated-transformer/) blog code.
+The baseline code was originally inspired by [The Annotated Transformer](https://nlp.seas.harvard.edu/annotated-transformer/) blog code. We have created examples of transformer models in the following repositories:
+
+- [machine translation](https://github.com/xomicsdatascience/machine-translation), including an neural architecture search (NAS) setup
+- [geneformer](https://github.com/xomicsdatascience/geneformer)
 
 ## AttentionSmithy Components
 
