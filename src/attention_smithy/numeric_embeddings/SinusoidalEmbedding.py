@@ -25,7 +25,7 @@ class SinusoidalEmbedding:
         self.exponent = torch.arange(0, embedding_dimension, 2) / embedding_dimension
 
     def _find_sin_and_cos_embeddings_of_given_values(self, values):
-        output_values = values / (10_000**self.exponent.to(values.device))
+        output_values = values / (10_000**self.exponent)
         return torch.sin(output_values), torch.cos(output_values)
 
 class SinusoidalPositionEmbedding(SinusoidalEmbedding):
@@ -66,7 +66,7 @@ class SinusoidalPositionEmbedding(SinusoidalEmbedding):
         """
 
         _, sequence_length, _ = x.shape
-        return self.positional_encoding[:sequence_length, :].to(x.device)
+        return self.positional_encoding[:sequence_length, :]
 
 class SinusoidalCustomEmbedding(SinusoidalEmbedding):
     """
@@ -93,4 +93,4 @@ class SinusoidalCustomEmbedding(SinusoidalEmbedding):
         )
         custom_encoding[:, :, 0::2] = sin
         custom_encoding[:, :, 1::2] = cos
-        return custom_encoding.to(x.device)
+        return custom_encoding

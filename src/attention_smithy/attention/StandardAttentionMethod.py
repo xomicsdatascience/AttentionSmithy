@@ -85,7 +85,7 @@ class StandardAttentionMethod(nn.Module):
 
     def _apply_diagonal_causal_masking_if_relevant(self, attention_scores):
         if self.is_causal_masking:
-            causal_mask = create_causal_mask(attention_scores.size(-1)).to(attention_scores.device)
+            causal_mask = create_causal_mask(attention_scores.size(-1))
             attention_scores = attention_scores.masked_fill(causal_mask == 0, float("-inf"))
         return attention_scores
 

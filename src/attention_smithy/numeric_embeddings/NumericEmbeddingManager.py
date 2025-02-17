@@ -78,7 +78,7 @@ class NumericEmbeddingManager:
                                                        sinusoidal_custom_values: torch.Tensor=None,
                                                        **kwargs
                                                        ) -> torch.Tensor:
-        output = torch.zeros_like(x).to(x.device)
+        output = torch.zeros_like(x)
         output += self.sinusoidal_position(x)
         output += self.sinusoidal_custom(x, sinusoidal_custom_values)
         output += self.learned_position(x)
@@ -99,10 +99,10 @@ class NumericEmbeddingManager:
                                                   ) -> torch.Tensor:
         batch_size, num_heads, query_sequence_length, _ = query.shape
         _, _, key_sequence_length, _ = key.shape
-        output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length)).to(query.device)
+        output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length))
         output += self.alibi_position(query_sequence_length, key_sequence_length)
         output += self.alibi_custom(alibi_query_values, alibi_key_values)
-        return output.to(query.device)
+        return output
 
 
 

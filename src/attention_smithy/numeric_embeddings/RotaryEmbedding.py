@@ -37,4 +37,4 @@ class RotaryPositionEmbedding:
             torch.Tensor: Adjusted output, of shape
                 (batch_size, sequence_length, embedding_dimension)
         """
-        return self.rotary.to(input.device).rotate_queries_or_keys(input)
+        return self.rotary.rotate_queries_or_keys(input)

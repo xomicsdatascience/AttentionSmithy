@@ -121,4 +121,4 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
         """
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(custom_query_values[:, :, None], custom_key_values[:, None, :])
         device = custom_query_values.device
-        return purely_negative_distance_matrix[:, None, :, :].to(device) * self.slope_m_values[None, :, :, :].to(device)
+        return purely_negative_distance_matrix[:, None, :, :] * self.slope_m_values[None, :, :, :]
