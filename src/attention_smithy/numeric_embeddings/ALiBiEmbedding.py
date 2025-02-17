@@ -1,9 +1,9 @@
 import math
 import torch
 import warnings
+from torch import nn
 
-
-class ALiBiEmbedding:
+class ALiBiEmbedding(nn.Module):
     """
     Attention with Linear Biases (ALiBi) embedding class using a technique described in the paper
         "TRAIN SHORT, TEST LONG: ATTENTION WITH LINEAR BIASES ENABLES INPUT LENGTH EXTRAPOLATION".
@@ -33,8 +33,9 @@ class ALiBiEmbedding:
                 [0.5, 0.25, 0.125, 0.0625]. For 2 heads and a slope_degree of 4,
                 this would be [0.25, 0.0625]. Of shape (number_of_heads, 1, 1).
         """
-
-        self.slope_m_values = self._get_slopes(number_of_heads=number_of_heads, slope_degree=slope_degree)
+        super().__init__()
+        slopes = self._get_slopes(number_of_heads, slope_degree)
+        self.register_buffer('slope_m_values', slopes)
 
     def _determine_negative_distance_matrix(self, query_values, kv_values):
         distance_matrix = query_values - kv_values
@@ -65,7 +66,6 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
                 [0.5, 0.25, 0.125, 0.0625]. For 2 heads and a slope_degree of 4,
                 this would be [0.25, 0.0625]. Of shape (number_of_heads, 1, 1).
         """
-
         super().__init__(number_of_heads, slope_degree)
         self.allow_cross_attention = allow_cross_attention
         self.has_warned_that_cross_attention_was_skipped = False
@@ -96,11 +96,12 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
             warnings.warn(
                 'ALiBi position encoding used, but not enabled for cross attention by default. Set `allow_cross_attention=True` in initiliazation of ALiBiPositionEmbedding if you want to change this behavior (not recommended).')
         if query_length != kv_length and self.allow_cross_attention:
-                return torch.zeros((query_length, kv_length))
-        query_positions = torch.arange(query_length)[:, None]
-        kv_positions = torch.arange(kv_length)[None, :]
+            return torch.zeros((query_length, kv_length), device=self.slope_m_values.device)
+
+        query_positions = torch.arange(query_length, device=self.slope_m_values.device)[:, None]
+        kv_positions = torch.arange(kv_length, device=self.slope_m_values.device)[None, :]
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(query_positions, kv_positions)
-        return purely_negative_distance_matrix.to(self.slope_m_values.device) * self.slope_m_values
+        return purely_negative_distance_matrix * self.slope_m_values
 
 class ALiBiCustomEmbedding(ALiBiEmbedding):
     def __call__(self,
@@ -114,11 +115,10 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
             custom_key_values (torch.Tensor): The values corresponding to the key matrix that
                 should denote customized "distance" from other tokens, of shape (batch_size, kv_length).
         Returns:
-            torch.Tensor: see ALiBiPositionEmbedding __call__ return value. The
+            torch.Tensor: see ALiBiPositionEmbedding __call__ return return value. The
                 only distinction is that this output is of shape
                 (batch_size, number_of_heads, query_length, kv_length), corresponding to
                 the exact shape of the attention_score value in the standard attention method.
         """
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(custom_query_values[:, :, None], custom_key_values[:, None, :])
-        device = custom_query_values.device
         return purely_negative_distance_matrix[:, None, :, :] * self.slope_m_values[None, :, :, :]

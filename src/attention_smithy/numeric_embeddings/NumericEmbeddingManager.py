@@ -8,6 +8,7 @@ from attention_smithy.numeric_embeddings import (
     SinusoidalPositionEmbedding,
     SinusoidalCustomEmbedding,
 )
+from torch import nn
 
 
 class NoAddEmbedding:
@@ -24,7 +25,7 @@ class PassthroughEmbedding:
     def __call__(self, x: torch.Tensor, *args, **kwargs):
         return x
 
-class NumericEmbeddingManager:
+class NumericEmbeddingManager(nn.Module):
     """
     NumericEmbeddingManager keeps all numeric-based encoding in a single accessible location.
 
@@ -66,6 +67,7 @@ class NumericEmbeddingManager:
                 will just return 0.
 
         """
+        super().__init__()
         self.sinusoidal_position = sinusoidal_position
         self.sinusoidal_custom = sinusoidal_custom
         self.learned_position = learned_position
@@ -99,7 +101,7 @@ class NumericEmbeddingManager:
                                                   ) -> torch.Tensor:
         batch_size, num_heads, query_sequence_length, _ = query.shape
         _, _, key_sequence_length, _ = key.shape
-        output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length))
+        output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length), device=query.device)
         output += self.alibi_position(query_sequence_length, key_sequence_length)
         output += self.alibi_custom(alibi_query_values, alibi_key_values)
         return output

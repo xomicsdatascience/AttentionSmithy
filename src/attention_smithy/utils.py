@@ -43,6 +43,7 @@ def seed_everything(
 
 def create_causal_mask(
         sequence_length: int,
+        device: torch.device = None
 ) -> torch.Tensor:
     """
     Creates a boolean tensor where values above the diagonal are False, all others
@@ -54,13 +55,14 @@ def create_causal_mask(
 
     Args:
         sequence_length (int): The dimensions of the square mask.
+        device (torch.device, optional): Device on which to create the mask.
 
     Returns:
         subsequent_mask (torch.Tensor): A causal mask for attention scores, of shape
             (1, sequence_length, sequence_length).
     """
     attn_shape = (1, sequence_length, sequence_length)
-    subsequent_mask = torch.triu(torch.ones(attn_shape), diagonal=1).type(torch.uint8)
+    subsequent_mask = torch.triu(torch.ones(attn_shape, device=device), diagonal=1).type(torch.uint8)
     return subsequent_mask == 0
 
 

@@ -1,7 +1,8 @@
 import torch
+from torch import nn
 from rotary_embedding_torch import RotaryEmbedding as RotaryEmbeddingTorch
 
-class RotaryPositionEmbedding:
+class RotaryPositionEmbedding(nn.Module):
     """
     A class that adjusts the query/key matrices to reflect position.
         Performed by breaking a token embedding into groups of 2, treats
@@ -21,7 +22,7 @@ class RotaryPositionEmbedding:
         Args:
             head_dimension (int): The expected dimension size for each head.
         """
-
+        super().__init__()
         self.rotary = RotaryEmbeddingTorch(dim=head_dimension)
 
     def __call__(self,
