@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from attention_smithy.generators.GeneratorStrategy import GeneratorStrategy
 from attention_smithy.generators.GreedyGenerator import GreedyGenerator
-from attention_smithy.generators.BeamGeneratorAcrossBatch import BeamGenerator
+from attention_smithy.generators.BeamGenerator import BeamGenerator
 
 class GeneratorContext:
     """
