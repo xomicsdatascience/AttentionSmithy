@@ -7,7 +7,7 @@ from attention_smithy.test_functions import generate_using_pretrained_model
 
 @pytest.fixture
 def beam_generator_context():
-    return GeneratorContext(method="beam_batch")
+    return GeneratorContext(method="beam")
 
 @pytest.fixture
 def vocab_size():
@@ -102,4 +102,4 @@ def test__BeamGeneratorAcrossBatch(beam_generator_context, dummy_model, tgt_inpu
         assert torch.allclose(output, expected_output)
 
 def test__BeamGeneratorAcrossBatch__using_pretrained_model():
-    generate_using_pretrained_model(method='beam_batch')
+    generate_using_pretrained_model(method='beam')

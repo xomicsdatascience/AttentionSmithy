@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from attention_smithy.generators.GeneratorStrategy import GeneratorStrategy
 
-class BeamGeneratorAcrossBatch(GeneratorStrategy):
+class BeamGenerator(GeneratorStrategy):
     """
     A beam search generator strategy class.
 

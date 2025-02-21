@@ -2,8 +2,7 @@ import torch
 from torch import nn
 from attention_smithy.generators.GeneratorStrategy import GeneratorStrategy
 from attention_smithy.generators.GreedyGenerator import GreedyGenerator
-from attention_smithy.generators.BeamGenerator import BeamGenerator
-from attention_smithy.generators.BeamGeneratorAcrossBatch import BeamGeneratorAcrossBatch
+from attention_smithy.generators.BeamGeneratorAcrossBatch import BeamGenerator
 
 class GeneratorContext:
     """
@@ -40,8 +39,6 @@ class GeneratorContext:
             self._strategy = GreedyGenerator(**kwargs)
         if method == "beam":
             self._strategy = BeamGenerator(**kwargs)
-        if method == "beam_batch":
-            self._strategy = BeamGeneratorAcrossBatch(**kwargs)
 
     def generate_sequence(
         self,
@@ -60,7 +57,7 @@ class GeneratorContext:
                 a generator (like the forward_decode function).
             end_token (int): The end token integer representation. Generally '2'.
             tgt_input (torch.Tensor): An initial target input of token IDs, of shape
-                (1, tgt_sequence_length). If there is no provided initial target
+                (batch_size, tgt_sequence_length). If there is no provided initial target
                 input, this value should be torch.Tensor([[start_token]]).
             maximum_sequence_length (int): The maximum number of tokens that can
                 be in the generated output sequence. Note that, if the target
