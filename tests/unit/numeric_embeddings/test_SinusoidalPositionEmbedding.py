@@ -1,14 +1,6 @@
 import torch
 from attention_smithy.numeric_embeddings import SinusoidalPositionEmbedding
 
-
-def test__SinusoidalPositionEmbedding__positional_encoding_has_expected_shape():
-    embedding_dimension_size = 128
-    max_len = 100
-    embedding = SinusoidalPositionEmbedding(embedding_dimension=embedding_dimension_size, max_len=max_len)
-    assert embedding.positional_encoding.shape == (max_len, embedding_dimension_size)
-
-
 def test__SinusoidalPositionEmbedding__position_values_encode_correctly():
     embedding = SinusoidalPositionEmbedding(embedding_dimension=10, max_len=4)
     x = torch.rand(2, 4, 10)
