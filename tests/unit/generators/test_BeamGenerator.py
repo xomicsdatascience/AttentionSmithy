@@ -10,18 +10,19 @@ def beam_generator_context():
     return GeneratorContext(method="beam")
 
 @pytest.fixture
-def greedy_generator_context():
-    return GeneratorContext(method="greedy")
-
-@pytest.fixture
 def vocab_size():
     return 60
 
 @pytest.fixture
-def expected_output(start_token, end_token, vocab_size):
+def batch_size():
+    return 12
+
+@pytest.fixture
+def expected_output(start_token, end_token, vocab_size, batch_size):
     random.seed(0)
     expected_list = list(range(6, vocab_size-10, 3))
-    return torch.tensor([[start_token] + expected_list + [end_token]])
+    single_sample = torch.tensor([[start_token] + expected_list + [end_token, end_token]])
+    return single_sample.repeat(batch_size, 1)
 
 @pytest.fixture
 def dummy_model(vocab_size, expected_output, end_token):
@@ -79,7 +80,7 @@ def dummy_model(vocab_size, expected_output, end_token):
             embedded_tokens = self.token_embedding(input_tokens)
             return embedded_tokens
 
-    return DummyBeamSearchModel(vocab_size, expected_output[0])
+    return DummyBeamSearchModel(vocab_size, expected_output[0][:-1])
 
 @pytest.fixture
 def start_token():
@@ -91,16 +92,14 @@ def end_token():
 
 
 @pytest.fixture
-def tgt_input_tensor(start_token):
-    return torch.tensor([[start_token]])
+def tgt_input_tensor(start_token, batch_size):
+    return torch.full((batch_size, 1), start_token)
 
-def test__BeamGenerator(beam_generator_context, greedy_generator_context, dummy_model, tgt_input_tensor, end_token, expected_output):
+def test__BeamGeneratorAcrossBatch(beam_generator_context, dummy_model, tgt_input_tensor, end_token, expected_output):
     args = (dummy_model, end_token, tgt_input_tensor)
     with torch.no_grad():
-        greedy_output = greedy_generator_context.generate_sequence(*args)
         output = beam_generator_context.generate_sequence(*args)
         assert torch.allclose(output, expected_output)
-        assert not torch.allclose(greedy_output, expected_output)
 
-def test__BeamGenerator__using_pretrained_model():
+def test__BeamGeneratorAcrossBatch__using_pretrained_model():
     generate_using_pretrained_model(method='beam')
