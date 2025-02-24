@@ -37,8 +37,10 @@ class GeneratorContext:
         """
         if method == "greedy":
             self._strategy = GreedyGenerator(**kwargs)
-        if method == "beam":
+        elif method == "beam":
             self._strategy = BeamGenerator(**kwargs)
+        else:
+            raise ValueError(f"Unknown generation method: '{method}'. Available methods are 'greedy' and 'beam'.")
 
     def generate_sequence(
         self,
