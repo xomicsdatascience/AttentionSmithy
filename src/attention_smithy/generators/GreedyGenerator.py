@@ -7,13 +7,13 @@ class GreedyGenerator(GeneratorStrategy):
     """
     A greedy generator strategy class that supports batch processing.
 
-    This class performs the same function as the GreedyGenerator class, but can work across
-    a full batch. While the original GreedyGenerator class assumes a batch size of 1, this
-    implementation handles arbitrary batch sizes efficiently.
-
-    The generator follows a greedy approach, selecting the highest probability token at each
-    step for each sequence in the batch. Generation continues for each sequence until either
-    its end token is reached or the maximum sequence length is hit.
+    "Greedy" is a computer science term effectively meaning "takes the immediate best option
+        every time." In this case, a sequence of tokens is generated one by one, token by token,
+        always picking the "best" next token. This is not always optimal - it takes an
+        immediate, short-term approach to creating sequences. Other optimizations, like
+        the beam search, try to create multiple possible threads and pick the best ones
+        over time. Not so here - it is a simple, "just give me the best next token"
+        approach.
     """
 
     def generate_sequence(

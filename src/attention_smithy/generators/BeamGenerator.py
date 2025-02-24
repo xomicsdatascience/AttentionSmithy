@@ -6,9 +6,37 @@ class BeamGenerator(GeneratorStrategy):
     """
     A beam search generator strategy class.
 
-    This class performs the same function as the BeamGenerator class, but can work across a full
-        batch. The BeamGenerator class assumes a batch size of 1. See the BeamGenerator
-        docustring for reference.
+    NOTE: 3 is set as the default beam_width, and for readibility the number 3
+        is used in the below explanation. However, this is adjustable by the end
+        user in the __init__ function.
+    Beam search refers to a method that sustains several possible options while
+        generating a sequence. Whereas a greedy algorithm always just picks the
+        next best token and adds it immediately, beam search will find the top 3
+        tokens and create a "beam" sequence for each. This allows the generator
+        to find long-term optimal solutions that might not always be found through
+        the singular "greedy" path.
+    To begin, the generator will take the provided input, find the top 3 tokens,
+        and initialize 3 different beam sequences, one for each token. All 3 beams
+        will then be passed through the model, and the best 3 tokens for each beam
+        will be calculated. This ultimately spawns 9 beams. Only the top 3 beams of
+        these 9 would then be kept, and this iteration occurs until all 3 best beams
+        have reached an end token.
+    Scoring is done through the log probabilities of the next tokens. When a new token
+        is added, the log probability of that token is added to the current
+        score of that beam, then this new additive score is divided by a length penalty
+        to normalize it. This normalization still prioritizes longer sequences, but
+        not as dramatically as it would be without the normalization.
+    A distinction is made between "finished" beams and "unfinished" beams. Finished
+        beams have reached an end token, and therefore should not have any other tokens
+        added to it. These are partitioned off from the unfinished beams that are still
+        being added to. After the unfinished beams have been passed through the model
+        and updated with new tokens and scores, they are recombined with the finished
+        beams (the finished beams have an extra end token added to normalize lengths,
+        with no change to their score). They are then all evaluated together, where the
+        best 3 beams - finished or unfinished - are sent back to the beginning loop
+    The program ends when all 3 optimal beams are finished, or if the maximum length is
+        reached. In both cases, the best beam of those 3 is returned (with trailing end
+        tokens removed if relevant).
     """
     def __init__(self,
                  beam_width:int = 3,
