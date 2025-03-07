@@ -97,13 +97,14 @@ class NumericEmbeddingManager(nn.Module):
                                                   key: torch.Tensor,
                                                   alibi_query_values: torch.Tensor = None,
                                                   alibi_key_values: torch.Tensor = None,
+                                                  alibi_custom_value_to_not_apply_linear_bias_toward: int = None,
                                                   **kwargs
                                                   ) -> torch.Tensor:
         batch_size, num_heads, query_sequence_length, _ = query.shape
         _, _, key_sequence_length, _ = key.shape
         output = torch.zeros((batch_size, num_heads, query_sequence_length, key_sequence_length), device=query.device)
         output += self.alibi_position(query_sequence_length, key_sequence_length)
-        output += self.alibi_custom(alibi_query_values, alibi_key_values)
+        output += self.alibi_custom(alibi_query_values, alibi_key_values, alibi_custom_value_to_not_apply_linear_bias_toward)
         return output
 
 
