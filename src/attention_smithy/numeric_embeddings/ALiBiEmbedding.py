@@ -107,6 +107,7 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
     def __call__(self,
                  custom_query_values: torch.Tensor,
                  custom_key_values: torch.Tensor,
+                 value_to_not_apply_linear_bias_toward: int,
                  ) -> torch.Tensor:
         """
         Args:
@@ -114,6 +115,7 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
                 should denote customized "distance" from other tokens, of shape (batch_size, query_length).
             custom_key_values (torch.Tensor): The values corresponding to the key matrix that
                 should denote customized "distance" from other tokens, of shape (batch_size, kv_length).
+
         Returns:
             torch.Tensor: see ALiBiPositionEmbedding __call__ return return value. The
                 only distinction is that this output is of shape
@@ -121,4 +123,18 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
                 the exact shape of the attention_score value in the standard attention method.
         """
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(custom_query_values[:, :, None], custom_key_values[:, None, :])
-        return purely_negative_distance_matrix[:, None, :, :] * self.slope_m_values[None, :, :, :]
+        attention_bias = purely_negative_distance_matrix[:, None, :, :] * self.slope_m_values[None, :, :, :]
+        if value_to_not_apply_linear_bias_toward != None:
+            self.negate_linear_bias_on_specified_value(attention_bias, custom_key_values, custom_query_values,
+                                                       value_to_not_apply_linear_bias_toward)
+        return attention_bias
+
+    def negate_linear_bias_on_specified_value(self, attention_bias, custom_key_values, custom_query_values,
+                                              value_to_not_apply_linear_bias_toward):
+        query_mask = custom_query_values == value_to_not_apply_linear_bias_toward
+        key_mask = custom_key_values == value_to_not_apply_linear_bias_toward
+        query_mask = query_mask[:, :, None]
+        key_mask = key_mask[:, None, :]
+        combined_mask = query_mask | key_mask
+        combined_mask = combined_mask[:, None, :, :]
+        attention_bias.masked_fill_(combined_mask, 0)
