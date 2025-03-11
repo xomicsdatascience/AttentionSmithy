@@ -85,3 +85,13 @@ def select_activation_function_module(
         return nn.SELU()
     elif activation_param == "gelu":
         return nn.GELU()
+
+def get_available_gpu_count():
+    if torch.cuda.is_available():
+        return torch.cuda.device_count()
+    elif torch.backends.mps.is_available():
+        return 1
+    elif torch.backends.opencl.is_available():
+        return torch.opencl.device_count()
+    else:
+        return 0
