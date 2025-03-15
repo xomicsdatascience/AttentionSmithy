@@ -2,7 +2,7 @@ import torch
 from attention_smithy.numeric_embeddings import SinusoidalPositionEmbedding
 
 def test__SinusoidalPositionEmbedding__position_values_encode_correctly():
-    embedding = SinusoidalPositionEmbedding(embedding_dimension=10, max_len=4)
+    embedding = SinusoidalPositionEmbedding(embedding_dimension=10)
     x = torch.rand(2, 4, 10)
     encoding = embedding(x)
     expected_encoding = torch.tensor(

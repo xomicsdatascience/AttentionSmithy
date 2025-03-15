@@ -11,7 +11,7 @@ def attention_method():
 
 @pytest.fixture
 def numeric_embedding_manager():
-    return NumericEmbeddingManager()
+    return NumericEmbeddingManager([])
 
 @pytest.fixture
 def embedding_dimension():
@@ -77,7 +77,7 @@ def test__MultiheadAttention__multihead_attention_still_works_when_query_and_key
 
 def test__MultiheadAttention__forward_pass_output_has_correct_shape__with_rotary_embedding(batch_size, number_of_heads, embedding_dimension, multihead_attention):
     rotary_embedding = RotaryPositionEmbedding(number_of_heads)
-    numeric_embedding_manager = NumericEmbeddingManager(rotary_position=rotary_embedding)
+    numeric_embedding_manager = NumericEmbeddingManager([rotary_embedding])
     query_and_kv_sequence_length = 15
     input_query = torch.rand((batch_size, query_and_kv_sequence_length, embedding_dimension))
     input_key = input_query.clone()

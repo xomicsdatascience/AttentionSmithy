@@ -5,7 +5,7 @@ from attention_smithy.numeric_embeddings import NumericEmbeddingManager, ALiBiPo
 
 @pytest.fixture
 def numeric_embedding_manager():
-    return NumericEmbeddingManager()
+    return NumericEmbeddingManager([])
 
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2(numeric_embedding_manager):
@@ -274,8 +274,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__numHeads2_
     assert torch.allclose(output, expected_output, atol=1e-4)
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_position():
-    alibi_position = ALiBiPositionEmbedding(number_of_heads=1)
-    numeric_embedding_manager = NumericEmbeddingManager(alibi_position=alibi_position)
+    numeric_embedding_manager = NumericEmbeddingManager([ALiBiPositionEmbedding(number_of_heads=1)])
 
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
@@ -305,8 +304,7 @@ def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_posi
     assert torch.allclose(output, expected_output, atol=1e-4)
 
 def test__StandardAttentionMethod__dimension3_queryLength2_kvLength2__alibi_custom():
-    alibi_custom = ALiBiCustomEmbedding(number_of_heads=1)
-    numeric_embedding_manager = NumericEmbeddingManager(alibi_custom=alibi_custom)
+    numeric_embedding_manager = NumericEmbeddingManager([ALiBiCustomEmbedding(number_of_heads=1)])
     q = torch.tensor([[[
         [1e-1, 2e-1, 3e-1],
         [4e-1, 5e-1, 6e-1]

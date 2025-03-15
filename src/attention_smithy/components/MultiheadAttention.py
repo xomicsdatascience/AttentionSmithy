@@ -78,7 +78,8 @@ class MultiheadAttention(nn.Module):
         """
 
         query, key, value = self._prepare_matrices_for_attention(input_query, input_key, input_value)
-        query, key = numeric_embedding_manager.apply_rotation_to_query_and_key_matrices(query, key)
+        query = numeric_embedding_manager.modify_matrix(query, **kwargs)
+        key = numeric_embedding_manager.modify_matrix(key, **kwargs)
         attention_output, attention_probabilities = self.attention_method(
             query, key, value, numeric_embedding_manager, **kwargs
         )

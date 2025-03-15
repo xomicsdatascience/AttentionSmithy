@@ -60,7 +60,7 @@ class StandardAttentionMethod(nn.Module):
                 (batch_size, number_of_heads, query_length, kv_length).
         """
         attention_scores = self._calculate_query_by_key_attention_scores(q, k)
-        attention_scores += numeric_embedding_manager.calculate_alibi_attention_score_distances(q, k, **kwargs)
+        attention_scores += numeric_embedding_manager.create_bias_tensor(attention_score_matrix=attention_scores, query=q, key=k, **kwargs)
         attention_scores = self._apply_masking_to_attention_scores(
             attention_scores, padding_and_loss_attention_mask
         )

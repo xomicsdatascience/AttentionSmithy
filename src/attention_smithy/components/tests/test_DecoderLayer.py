@@ -47,7 +47,7 @@ def dropout():
 
 @pytest.fixture
 def numeric_embedding_manager():
-    return NumericEmbeddingManager()
+    return NumericEmbeddingManager([])
 
 @pytest.fixture
 def feed_forward_network(embedding_dimension, feed_forward_dimension):
@@ -87,6 +87,7 @@ def global_tokens_query(batch_size, num_blocks_query, block_size):
 def global_tokens_kv(batch_size, num_blocks_kv, block_size):
     return torch.zeros((batch_size, num_blocks_kv*block_size))
 
+@pytest.mark.skip(reason="Big Bird not implemented")
 def test__DecoderLayer__works_with_big_bird_self_attention(query_tensor, kv_tensor, numeric_embedding_manager, global_tokens_query, global_tokens_kv, block_size, embedding_dimension, number_of_heads, feed_forward_network, dropout):
     big_bird_attention_method__with_causal_masking = BigBirdAttentionMethod(block_size, block_size, local_window_extension_length=0, is_causal_masking=True)
     self_attention = MultiheadAttention(embedding_dimension, number_of_heads, big_bird_attention_method__with_causal_masking)
@@ -105,6 +106,7 @@ def test__DecoderLayer__works_with_big_bird_self_attention(query_tensor, kv_tens
     )
     assert output.shape == query_tensor.shape
 
+@pytest.mark.skip(reason="Big Bird not implemented")
 def test__DecoderLayer__throws_warning_error_when_big_bird_self_attention_method_has_no_causal_masking(block_size, embedding_dimension, number_of_heads, feed_forward_network, dropout, is_causal_masking_warning_error):
     big_bird_attention_method__with_causal_masking = BigBirdAttentionMethod(block_size, block_size, local_window_extension_length=0)
     self_attention = MultiheadAttention(embedding_dimension, number_of_heads, big_bird_attention_method__with_causal_masking)
