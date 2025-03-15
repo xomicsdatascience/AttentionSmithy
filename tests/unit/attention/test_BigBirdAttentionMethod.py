@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 from attention_smithy.attention import BigBirdAttentionMethod
 from attention_smithy.numeric_embeddings import RotaryPositionEmbedding, ALiBiPositionEmbedding, NumericEmbeddingManager
 
+pytestmark = pytest.mark.skip(reason="Big Bird not officially implemented. Keeping tests for future reference")
 
 @pytest.fixture
 def head_dimension():

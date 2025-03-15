@@ -1,37 +1,44 @@
 import torch
 from torch import nn
+from attention_smithy.numeric_embeddings.abstract_embedding_strategies import NumericEmbeddingStrategyBase
 
-class LearnedPositionEmbedding(nn.Module):
+
+class LearnedPositionEmbedding(NumericEmbeddingStrategyBase):
     """
-    A pytorch module for learned positional embeddings.
+    A PyTorch module for learned positional embeddings implementing NumericEmbeddingStrategyBase.
     """
-    def __init__(self,
-                 max_sequence_length: int,
-                 embedding_dimension: int,
-                 ) -> None:
+
+    def __init__(self, max_sequence_length: int, embedding_dimension: int) -> None:
         """
         Args:
             max_sequence_length (int): The maximum sequence length for any input.
             embedding_dimension (int): The token embedding dimension size.
         Attributes:
-            embedding (nn.Embedding): a module to pass position or other sequences
-                to for embedding.
+            embedding (nn.Embedding): A module to embed position indices.
         """
-
-        super(LearnedPositionEmbedding, self).__init__()
+        super().__init__()
         self.embedding = nn.Embedding(max_sequence_length, embedding_dimension)
 
+    def create_positional_or_custom_embedding(self, **kwargs) -> torch.Tensor:
+        """
+        Generates learned positional embeddings for a given sequence length.
 
-    def forward(self,
-                x: torch.Tensor,
-                ) -> torch.Tensor:
-        """
         Args:
-            sequence_length (torch.Tensor): The sequence length of a given batch.
+            kwargs["token_embedding"] (torch.Tensor): Input tensor (batch_size, sequence_length, embedding_dimension).
         Returns:
-            torch.Tensor: An output tensor of shape
-                (batch_size, sequence_length, embedding_dimension)
+            torch.Tensor: Learned positional encoding of shape (sequence_length, embedding_dimension).
         """
-        sequence_length = x.shape[1]
+        return self.forward(kwargs["token_embedding"])
+
+    def forward(self, token_embedding: torch.Tensor) -> torch.Tensor:
+        """
+        Standard forward function aligning with nn.Module usage.
+
+        Args:
+            token_embedding (torch.Tensor): Input tensor (batch_size, sequence_length, embedding_dimension).
+        Returns:
+            torch.Tensor: Learned positional encoding of shape (sequence_length, embedding_dimension).
+        """
+        sequence_length = token_embedding.shape[1]
         position_ids = torch.arange(sequence_length, device=self.embedding.weight.device)
         return self.embedding(position_ids)

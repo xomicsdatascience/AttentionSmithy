@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 from attention_smithy.utils import create_causal_mask
-from attention_smithy.numeric_embeddings import NoAddEmbedding, PassthroughEmbedding
-
 
 class BigBirdAttentionMethod(nn.Module):
     """

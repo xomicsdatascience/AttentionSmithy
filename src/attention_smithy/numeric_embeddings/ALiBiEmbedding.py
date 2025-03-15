@@ -2,36 +2,19 @@ import math
 import torch
 import warnings
 from torch import nn
+from attention_smithy.numeric_embeddings.abstract_embedding_strategies import AttentionBiasStrategyBase
 
-class ALiBiEmbedding(nn.Module):
+
+class ALiBiEmbedding(AttentionBiasStrategyBase):
     """
-    Attention with Linear Biases (ALiBi) embedding class using a technique described in the paper
-        "TRAIN SHORT, TEST LONG: ATTENTION WITH LINEAR BIASES ENABLES INPUT LENGTH EXTRAPOLATION".
-        The intention is to not encode numeric (position) values directly, but rather adjust
-        attention scores to prioritize attending to nearby tokens. The exact distance prioritization
-        explicitly differs across heads in multihead attention to enable varying ranges of attention.
-    WHEN APPLIED: After attention scores have been computed, but before conversion to probablities
-        via softmax.
-    NOTE: ALiBi is generally used as a positional encoding method. However, it can apply to
-        customized distances as well. Thus there are two child classes in this file depending
-        on the desired use case.
+    Base class for ALiBi embeddings, adjusting attention scores to prioritize nearby tokens.
     """
 
-    def __init__(self,
-                 number_of_heads: int,
-                 slope_degree: int = 2,
-                 ) -> None:
+    def __init__(self, number_of_heads: int, slope_degree: int = 2) -> None:
         """
         Args:
-            number_of_heads (int): The expected number of heads used in multihead attention.
-            slope_degree (int, optional): The degree of difference between heads. This
-                corresponds to the calculation for "m" in the paper. See "slope_m_values"
-                attribute for an example. Defaults to 2 (1/2).
-        Attributes:
-            slope_m_values (torch.Tensor): A tensor containing a single scale value for
-                each head. For 4 heads and a slope_degree of 2, this would be
-                [0.5, 0.25, 0.125, 0.0625]. For 2 heads and a slope_degree of 4,
-                this would be [0.25, 0.0625]. Of shape (number_of_heads, 1, 1).
+            number_of_heads (int): The number of heads used in multihead attention.
+            slope_degree (int, optional): Determines the degree of difference between heads. Defaults to 2.
         """
         super().__init__()
         slopes = self._get_slopes(number_of_heads, slope_degree)
@@ -46,95 +29,81 @@ class ALiBiEmbedding(nn.Module):
         slopes = (1 / slope_degree) ** torch.arange(1, number_of_heads + 1)
         return slopes.view(number_of_heads, 1, 1)
 
+    def create_bias_tensor(self, **kwargs) -> torch.Tensor:
+        return self.forward(**kwargs)
+
+
 class ALiBiPositionEmbedding(ALiBiEmbedding):
-    def __init__(self,
-                 number_of_heads: int,
-                 slope_degree: int = 2,
-                 allow_cross_attention: bool = False,
-                 ) -> None:
+    """
+    Applies ALiBi-based attention bias based on token positions.
+    """
+
+    def __init__(self, number_of_heads: int, slope_degree: int = 2, allow_cross_attention: bool = False) -> None:
         """
         Args:
             number_of_heads (int): See parent class.
             slope_degree (int, optional): See parent class.
-            allow_cross_attention (bool, optional): Determines whether or not alibi position embedding should apply
-                to cross attention blocks (where the query and key sequence lengths are different). To the author's
-                knowledge, allowing this is untested and likely to end in error, but the option is available for future
-                testing.
-        Attributes:
-            slope_m_values (torch.Tensor): A tensor containing a single scale value for
-                each head. For 4 heads and a slope_degree of 2, this would be
-                [0.5, 0.25, 0.125, 0.0625]. For 2 heads and a slope_degree of 4,
-                this would be [0.25, 0.0625]. Of shape (number_of_heads, 1, 1).
+            allow_cross_attention (bool, optional): If True, enables cross-attention. Defaults to False.
         """
         super().__init__(number_of_heads, slope_degree)
         self.allow_cross_attention = allow_cross_attention
-        self.has_warned_that_cross_attention_was_skipped = False
 
-    def __call__(self,
-                 query_length: int,
-                 kv_length: int,
-                 ) -> torch.Tensor:
+    def forward(self, query: torch.Tensor, key: torch.Tensor, **kwargs) -> torch.Tensor:
         """
+        Computes the ALiBi bias tensor.
         Args:
-            query_length (int): The sequence length of the query matrix
-            kv_length (int): The sequence length of the key (and, technically, value)
-                matrix.
-        Raises:
-            ValueError: ALiBi positional embeddings address self-attention
-                mechanisms. This error may be removed if cross-attention applications
-                become obvious.
+            kwargs["query_length"] (int): Length of the query sequence.
+            kwargs["kv_length"] (int): Length of the key sequence.
         Returns:
-            torch.Tensor: A series of query-by-key matrices, one for each head.
-                No positive values exist in these matrices - the idea is to pay
-                "less" attention to tokens that are farther away. How far depends
-                on the head. Applies across samples in a batch. Of shape
-                (number_of_heads, query_length, kv_length), the last three dimensions
-                of the attention_score value in the standard attention method.
-                It is broadcast across samples in a batch.
+            torch.Tensor: ALiBi attention bias of shape (num_heads, query_length, key_length), broadcast across the batch.
         """
+        query_length = query.shape[2]
+        kv_length = key.shape[2]
         if query_length != kv_length and not self.allow_cross_attention:
             warnings.warn(
                 'ALiBi position encoding used, but not enabled for cross attention by default. Set `allow_cross_attention=True` in initiliazation of ALiBiPositionEmbedding if you want to change this behavior (not recommended).')
-        if query_length != kv_length and self.allow_cross_attention:
-            return torch.zeros((query_length, kv_length), device=self.slope_m_values.device)
+            return torch.zeros((self.slope_m_values.shape[0], query_length, kv_length),
+                               device=self.slope_m_values.device)
 
         query_positions = torch.arange(query_length, device=self.slope_m_values.device)[:, None]
         kv_positions = torch.arange(kv_length, device=self.slope_m_values.device)[None, :]
         purely_negative_distance_matrix = self._determine_negative_distance_matrix(query_positions, kv_positions)
+
         return purely_negative_distance_matrix * self.slope_m_values
 
 class ALiBiCustomEmbedding(ALiBiEmbedding):
-    def __call__(self,
-                 custom_query_values: torch.Tensor,
-                 custom_key_values: torch.Tensor,
-                 value_to_not_apply_linear_bias_toward: int,
-                 ) -> torch.Tensor:
-        """
-        Args:
-            custom_query_values (torch.Tensor): The values corresponding to the query matrix that
-                should denote customized "distance" from other tokens, of shape (batch_size, query_length).
-            custom_key_values (torch.Tensor): The values corresponding to the key matrix that
-                should denote customized "distance" from other tokens, of shape (batch_size, kv_length).
+    """
+    Applies ALiBi-based attention bias using custom-defined distances.
+    """
 
-        Returns:
-            torch.Tensor: see ALiBiPositionEmbedding __call__ return return value. The
-                only distinction is that this output is of shape
-                (batch_size, number_of_heads, query_length, kv_length), corresponding to
-                the exact shape of the attention_score value in the standard attention method.
+    def forward(self, alibi_query_values: torch.Tensor, alibi_key_values: torch.Tensor, value_to_not_apply_linear_bias_toward: int = None, **kwargs) -> torch.Tensor:
         """
-        purely_negative_distance_matrix = self._determine_negative_distance_matrix(custom_query_values[:, :, None], custom_key_values[:, None, :])
+        Computes the ALiBi bias tensor using custom query and key values.
+        Args:
+            custom_query_values (torch.Tensor): Custom distance values for queries.
+            custom_key_values (torch.Tensor): Custom distance values for keys.
+            value_to_not_apply_linear_bias_toward (int, optional): A specific value to exclude from biasing.
+        Returns:
+            torch.Tensor: ALiBi bias tensor applied to the attention scores.
+        """
+        purely_negative_distance_matrix = self._determine_negative_distance_matrix(
+            alibi_query_values[:, :, None], alibi_key_values[:, None, :]
+        )
         attention_bias = purely_negative_distance_matrix[:, None, :, :] * self.slope_m_values[None, :, :, :]
-        if value_to_not_apply_linear_bias_toward != None:
-            self.negate_linear_bias_on_specified_value(attention_bias, custom_key_values, custom_query_values,
-                                                       value_to_not_apply_linear_bias_toward)
+
+        if value_to_not_apply_linear_bias_toward is not None:
+            self._negate_linear_bias_on_specified_value(
+                attention_bias, alibi_query_values, alibi_key_values, value_to_not_apply_linear_bias_toward
+            )
+
         return attention_bias
 
-    def negate_linear_bias_on_specified_value(self, attention_bias, custom_key_values, custom_query_values,
-                                              value_to_not_apply_linear_bias_toward):
-        query_mask = custom_query_values == value_to_not_apply_linear_bias_toward
-        key_mask = custom_key_values == value_to_not_apply_linear_bias_toward
-        query_mask = query_mask[:, :, None]
-        key_mask = key_mask[:, None, :]
-        combined_mask = query_mask | key_mask
+    def _negate_linear_bias_on_specified_value(self, attention_bias, alibi_query_values, alibi_key_values, value):
+        """
+        Removes ALiBi bias from specific query/key values.
+        """
+        query_mask = alibi_query_values == value
+        key_mask = alibi_key_values == value
+        combined_mask = query_mask[:, :, None] | key_mask[:, None, :]
         combined_mask = combined_mask[:, None, :, :]
         attention_bias.masked_fill_(combined_mask, 0)

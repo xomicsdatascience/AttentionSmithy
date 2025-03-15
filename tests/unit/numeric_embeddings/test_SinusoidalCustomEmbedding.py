@@ -11,7 +11,7 @@ def test__SinusoidalCustomEmbedding__float_values_encode_correctly():
         ]
     )
 
-    encoding = embedding(x=x, custom_values=custom_values)
+    encoding = embedding(token_embedding=x, custom_values=custom_values)
     expected_encoding = torch.tensor(
         [
             [
