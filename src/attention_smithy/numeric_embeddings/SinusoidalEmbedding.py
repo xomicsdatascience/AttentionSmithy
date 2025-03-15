@@ -29,13 +29,6 @@ class SinusoidalEmbedding(NumericEmbeddingStrategyBase):
         return torch.sin(output_values), torch.cos(output_values)
 
     def create_positional_or_custom_embedding(self, token_embedding: torch.Tensor, **kwargs) -> torch.Tensor:
-        """
-        Generate positional encoding for the sequence positions.
-        Args:
-            kwargs["token_embedding"] (torch.Tensor): Input tensor (batch_size, sequence_length, embedding_dimension)
-        Returns:
-            torch.Tensor: Positional encoding (sequence_length, embedding_dimension)
-        """
         return self(token_embedding, **kwargs)
 
 class SinusoidalPositionEmbedding(SinusoidalEmbedding):
@@ -52,7 +45,6 @@ class SinusoidalPositionEmbedding(SinusoidalEmbedding):
 
     def forward(self, token_embedding: torch.Tensor, **kwargs) -> torch.Tensor:
         """
-        Standard forward function to align with nn.Module usage.
         Args:
             token_embedding (torch.Tensor): The embedded input tensor, of shape (batch_size, sequence_length, embedding_dimension)
         Returns:

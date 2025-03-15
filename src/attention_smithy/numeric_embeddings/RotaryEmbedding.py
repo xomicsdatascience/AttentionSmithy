@@ -6,10 +6,13 @@ from attention_smithy.numeric_embeddings.abstract_embedding_strategies import Ma
 
 class RotaryPositionEmbedding(MatrixModificationStrategyBase):
     """
-    A class that adjusts the query/key matrices to reflect position using rotary embeddings.
+    A class that adjusts the query/key matrices to reflect position.
+        Performed by breaking a token embedding into groups of 2, treats
+        each group as a set of coordinates, then incrementally adjusts the angle of those
+        coordinates, with variance depending on the position of the token.
 
-    This transformation is applied after query/key/values are multiplied by their respective
-    weights in attention but before attention scores are calculated.
+    WHEN APPLIED: After query/key/values are multiplied by their respective weights
+        in attention, but before attention scores are calculated.
 
     NOTE: This implementation uses the external package `rotary_embedding_torch`.
     """
@@ -25,15 +28,6 @@ class RotaryPositionEmbedding(MatrixModificationStrategyBase):
         self.rotary = RotaryEmbeddingTorch(dim=head_dimension)
 
     def modify_matrix(self, target_matrix: torch.Tensor, **kwargs) -> torch.Tensor:
-        """
-        Implements the abstract method from `MatrixModificationStrategyBase` to apply rotary embeddings.
-
-        Args:
-            kwargs (dict): Must contain 'target_matrix' (torch.Tensor).
-
-        Returns:
-            torch.Tensor: Modified matrix.
-        """
         return self.forward(target_matrix)
 
     def forward(self, target_matrix: torch.Tensor) -> torch.Tensor:

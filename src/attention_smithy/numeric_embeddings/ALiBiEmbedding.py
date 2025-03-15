@@ -7,14 +7,30 @@ from attention_smithy.numeric_embeddings.abstract_embedding_strategies import At
 
 class ALiBiEmbedding(AttentionBiasStrategyBase):
     """
-    Base class for ALiBi embeddings, adjusting attention scores to prioritize nearby tokens.
+    Attention with Linear Biases (ALiBi) embedding class using a technique described in the paper
+        "TRAIN SHORT, TEST LONG: ATTENTION WITH LINEAR BIASES ENABLES INPUT LENGTH EXTRAPOLATION".
+        The intention is to not encode numeric (position) values directly, but rather adjust
+        attention scores to prioritize attending to nearby tokens. The exact distance prioritization
+        explicitly differs across heads in multihead attention to enable varying ranges of attention.
+    WHEN APPLIED: After attention scores have been computed, but before conversion to probablities
+        via softmax.
+    NOTE: ALiBi is generally used as a positional encoding method. However, it can apply to
+        customized distances as well. Thus there are two child classes in this file depending
+        on the desired use case.
     """
 
     def __init__(self, number_of_heads: int, slope_degree: int = 2) -> None:
         """
         Args:
             number_of_heads (int): The number of heads used in multihead attention.
-            slope_degree (int, optional): Determines the degree of difference between heads. Defaults to 2.
+            slope_degree (int, optional): The degree of difference between heads. This
+                corresponds to the calculation for "m" in the paper. See "slope_m_values"
+                attribute for an example. Defaults to 2 (1/2).
+        Attributes:
+            slope_m_values (torch.Tensor): A tensor containing a single scale value for
+                each head. For 4 heads and a slope_degree of 2, this would be
+                [0.5, 0.25, 0.125, 0.0625]. For 2 heads and a slope_degree of 4,
+                this would be [0.25, 0.0625]. Of shape (number_of_heads, 1, 1).
         """
         super().__init__()
         slopes = self._get_slopes(number_of_heads, slope_degree)
@@ -43,7 +59,10 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
         Args:
             number_of_heads (int): See parent class.
             slope_degree (int, optional): See parent class.
-            allow_cross_attention (bool, optional): If True, enables cross-attention. Defaults to False.
+            allow_cross_attention (bool, optional): Determines whether or not alibi position embedding should apply
+                to cross attention blocks (where the query and key sequence lengths are different). To the author's
+                knowledge, allowing this is untested and likely to end in error, but the option is available for future
+                testing.
         """
         super().__init__(number_of_heads, slope_degree)
         self.allow_cross_attention = allow_cross_attention
@@ -52,10 +71,16 @@ class ALiBiPositionEmbedding(ALiBiEmbedding):
         """
         Computes the ALiBi bias tensor.
         Args:
-            kwargs["query_length"] (int): Length of the query sequence.
-            kwargs["kv_length"] (int): Length of the key sequence.
+            query (torch.Tensor): The query tensor.
+            key (torch.Tensor): The key tensor.
         Returns:
-            torch.Tensor: ALiBi attention bias of shape (num_heads, query_length, key_length), broadcast across the batch.
+            torch.Tensor: A series of query-by-key matrices, one for each head.
+                No positive values exist in these matrices - the idea is to pay
+                "less" attention to tokens that are farther away. How far depends
+                on the head. Applies across samples in a batch. Of shape
+                (number_of_heads, query_length, kv_length), the last three dimensions
+                of the attention_score value in the standard attention method.
+                It is broadcast across samples in a batch.
         """
         query_length = query.shape[2]
         kv_length = key.shape[2]
@@ -80,8 +105,10 @@ class ALiBiCustomEmbedding(ALiBiEmbedding):
         """
         Computes the ALiBi bias tensor using custom query and key values.
         Args:
-            custom_query_values (torch.Tensor): Custom distance values for queries.
-            custom_key_values (torch.Tensor): Custom distance values for keys.
+            alibi_query_values (torch.Tensor): The values corresponding to the query matrix that
+                should denote customized "distance" from other tokens, of shape (batch_size, query_length).
+            alibi_key_values (torch.Tensor): The values corresponding to the key matrix that
+                should denote customized "distance" from other tokens, of shape (batch_size, kv_length).
             value_to_not_apply_linear_bias_toward (int, optional): A specific value to exclude from biasing.
         Returns:
             torch.Tensor: ALiBi bias tensor applied to the attention scores.

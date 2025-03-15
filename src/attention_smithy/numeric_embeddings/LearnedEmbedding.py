@@ -20,20 +20,10 @@ class LearnedPositionEmbedding(NumericEmbeddingStrategyBase):
         self.embedding = nn.Embedding(max_sequence_length, embedding_dimension)
 
     def create_positional_or_custom_embedding(self, **kwargs) -> torch.Tensor:
-        """
-        Generates learned positional embeddings for a given sequence length.
-
-        Args:
-            kwargs["token_embedding"] (torch.Tensor): Input tensor (batch_size, sequence_length, embedding_dimension).
-        Returns:
-            torch.Tensor: Learned positional encoding of shape (sequence_length, embedding_dimension).
-        """
         return self.forward(kwargs["token_embedding"])
 
     def forward(self, token_embedding: torch.Tensor) -> torch.Tensor:
         """
-        Standard forward function aligning with nn.Module usage.
-
         Args:
             token_embedding (torch.Tensor): Input tensor (batch_size, sequence_length, embedding_dimension).
         Returns:
