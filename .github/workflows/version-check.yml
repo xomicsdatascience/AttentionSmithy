@@ -2,7 +2,7 @@ name: Version Check
 
 on:
   pull_request:
-    branches: [ "main" ]  # Runs only on PRs to main
+    branches: [ "main" ]
 
 permissions:
   contents: read
