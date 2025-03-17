@@ -3,8 +3,8 @@ requires = ["setuptools", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "AttentionSmithy"
-version = "1.0.0"
+name = "attention_smithy"
+version = "1.0.1"
 authors = [
   { name="Caleb Cranney", email="11773171+CCranney@users.noreply.github.com" },
 ]
