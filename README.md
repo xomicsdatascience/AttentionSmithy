@@ -9,6 +9,30 @@ The baseline code was originally inspired by [The Annotated Transformer](https:/
 - [machine translation](https://github.com/xomicsdatascience/machine-translation), including an neural architecture search (NAS) setup
 - [geneformer](https://github.com/xomicsdatascience/geneformer)
 
+## Installation
+
+You can install `attention-smithy` using either of the following methods:
+
+### Install from PyPI
+
+The simplest way to install `attention-smithy` is via `pip`:
+
+```sh
+pip install attention-smithy
+```
+
+### Install from GitHub
+
+Alternatively, you can install the latest version directly from the GitHub repository:
+
+```sh
+git clone https://github.com/xomicsdatascience/AttentionSmithy.git
+cd AttentionSmithy
+pip install -e .
+```
+
+This method is recommended if you want to work with the latest source code or contribute to the project.
+
 ## Future Directions
 <div align="center">
 

@@ -15,7 +15,7 @@ To run this project efficiently, your computer should have a GPU with CUDA (for 
 Before running the model, install the necessary dependencies using `pip` in a pip or conda environment:
 
 ```sh
-pip install attention_smithy datasets
+pip install attention-smithy datasets
 ```
 
 ## Running the Pipeline
