@@ -20,13 +20,15 @@ jobs:
       id: check_changes
       run: |
         git fetch origin main --depth=1
-        CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep "^src/" || true)
-        if [ -z "$CHANGED_FILES" ]; then
+        CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep "^src/")
+        
+        if [[ -z "$CHANGED_FILES" ]]; then
           echo "No changes detected in src/. Skipping version check."
           echo "SKIP_VERSION_CHECK=true" >> $GITHUB_ENV
         else
           echo "Changes detected in src/. Version check required."
           echo "SKIP_VERSION_CHECK=false" >> $GITHUB_ENV
+        fi
 
     - name: Extract version from pyproject.toml
       id: current_version
