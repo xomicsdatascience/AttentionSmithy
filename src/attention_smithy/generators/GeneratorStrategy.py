@@ -45,6 +45,11 @@ class GeneratorStrategy(ABC):
         batch_size = outputs.shape[0]
         for i in range(batch_size):
             sample = outputs[i]
+            if self.no_repeat_ngram_size == 1:
+                seen_tokens = set(sample.tolist())
+                for token in seen_tokens:
+                    log_probabilities[i, token] = float('-inf')
+                continue
             if len(sample) < self.no_repeat_ngram_size:
                 continue
             n_minus_1_sequence_to_next_token_dictionary = self._make_n_minus_1_sequence_to_next_token_dictionary(sample, self.no_repeat_ngram_size)
