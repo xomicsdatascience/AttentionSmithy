@@ -68,7 +68,7 @@ class GeneratorContext:
                 maximum_sequence_length.
 
         Returns:
-            torch.Tensor: 1D or 2D token integer sequence(s)
+            torch.Tensor: 1D or 2D token integer sequence(s).
         """
         return self._strategy.generate_sequence(
             model,
