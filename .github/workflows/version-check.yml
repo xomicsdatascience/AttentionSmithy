@@ -13,6 +13,20 @@ jobs:
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 2  # Fetch more history to compare changes
+
+    - name: Check for changes in src directory
+      id: check_changes
+      run: |
+        git fetch origin main --depth=1
+        CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep "^src/" || true)
+        if [ -z "$CHANGED_FILES" ]; then
+          echo "No changes detected in src/. Skipping version check."
+          echo "SKIP_VERSION_CHECK=true" >> $GITHUB_ENV
+        else
+          echo "Changes detected in src/. Version check required."
+          echo "SKIP_VERSION_CHECK=false" >> $GITHUB_ENV
 
     - name: Extract version from pyproject.toml
       id: current_version
@@ -28,7 +42,8 @@ jobs:
         echo "PREV_VERSION=$PREV_VERSION" >> $GITHUB_ENV
         echo "Previous version: $PREV_VERSION"
 
-    - name: Compare versions
+    - name: Compare versions if needed
+      if: env.SKIP_VERSION_CHECK == 'false'
       run: |
         if [ "$VERSION" == "$PREV_VERSION" ]; then
           echo "❌ Version has not been incremented! Please update the version in pyproject.toml."
