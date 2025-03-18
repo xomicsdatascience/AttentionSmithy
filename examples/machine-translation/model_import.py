@@ -4,7 +4,6 @@ from torch.optim import Adam
 from torch.optim.lr_scheduler import LambdaLR
 from torch.nn import functional as F
 import pytorch_lightning as pl
-from copy import deepcopy
 import math
 from data_import import LabelSmoothingLoss
 from attention_smithy.components import Encoder, Decoder, EncoderLayer, DecoderLayer
@@ -37,7 +36,7 @@ class MachineTranslationModel(pl.LightningModule):
             'feedforward_dimension': 2048,
             'num_encoder_layers': 6,
             'num_decoder_layers': 6,
-            'scheduler_warmup_steps': 100,
+            'scheduler_warmup_steps': 4000,
             'label_smoothing': 0.9,
         }
 

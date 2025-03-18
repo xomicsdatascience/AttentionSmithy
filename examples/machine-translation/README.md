@@ -40,13 +40,84 @@ python main.py
 
 ## Expected Output
 
-At the end of each epoch, the script should print out 50 of the English validation sentences and their translated versions.
+For demonstration purposes, the script is configured to run for ten epochs. At the end of each epoch, the script will print ten English validation sentences alongside their corresponding translations.
+
+It is important to note that the WMT-14 German-English dataset includes a range of politically themed statements. Consequently, there remains a noticeable bias towards topics prevalent in the dataset, especially in early epochs. However, understandable grammatical structure still emerges in the translations.
+
+By the end of the first epoch, the output may resemble the following:
+
+```text
+Reference: who came up with this idea?                                                                                                                                                                                
+Output: this is why this issue?
+
+Reference: yes, it does.
+Output: however, there is no longer that.
+
+Reference: a king with 14 wives
+Output: a great deal with regard to the same time.
+
+Reference: monitoring
+Output: mr president.
+
+Reference: everybody fought for everybody.
+Output: this has been taken.
+
+Reference: where do the weapons come from?
+Output: why?
+
+Reference: weight
+Output: the vote will take place tomorrow.
+
+Reference: friends were baffled.
+Output: mr president.
+
+Reference: i just ignore them.
+Output: i would like to say it.
+
+Reference: homex long term
+Output: i would like to ask you.
+```
+
+By the tenth epoch, the translations typically exhibit greater alignment with the reference sentences, as demonstrated below:
+
+```text
+Reference: who came up with this idea?                                                                                                                                                                                
+Output: what is the idea?
+
+Reference: yes, it does.
+Output: yes, that is true.
+
+Reference: a king with 14 wives
+Output: a king with 14 member states
+
+Reference: monitoring
+Output: monitoring
+
+Reference: everybody fought for everybody.
+Output: everyone has employed the use of everyone.
+
+Reference: where do the weapons come from?
+Output: where do the weapons come?
+
+Reference: weight
+Output: attention
+
+Reference: friends were baffled.
+Output: my friends were confusing.
+
+Reference: i just ignore them.
+Output: i ignore that.
+
+Reference: homex long term
+Output: in the long - term
+```
+
+Extending the training duration and incorporating additional data further enhances translation quality over time.
 
 ## Notes
 
 - The model is configured to run **100,000 sentences** for **10 epochs** with a **maximum sequence length of 100** tokens.
 - This setup is meant for demonstration purposes and can be adjusted for more extensive training.
-- Some design choices were made that promoted readability over efficiency. This includes functionality that groups sentences by length in each batch.
 
 Happy translating! 🚀
 
