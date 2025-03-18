@@ -1,12 +1,83 @@
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, BatchSampler, Sampler
+import torch.distributed as dist
 import mmap
 from torch import nn
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer
+import random
 
 data_directory = 'data'
+
+class MachineTranslationDataModule(pl.LightningDataModule):
+    def __init__(self,
+                 en_filepath_suffix: str,
+                 de_filepath_suffix: str,
+                 maximum_length: int,
+                 batch_size: int,
+                 num_training_samples: int = None,
+                 ):
+
+        super().__init__()
+        self.en_filepath_suffix = en_filepath_suffix
+        self.de_filepath_suffix = de_filepath_suffix
+        self.maximum_length = maximum_length
+        self.batch_size = batch_size
+        self.num_training_samples = num_training_samples
+        self.de_pad_token, self.en_pad_token, self.de_vocab_size, self.en_vocab_size = self.get_tokenizer_values()
+
+    def setup(self, stage=None):
+        self.train_dataset = LineIndexDataset(f'{data_directory}/train{self.de_filepath_suffix}', f'{data_directory}/train{self.en_filepath_suffix}', self.num_training_samples)
+        self.val_dataset = LineIndexDataset(f'{data_directory}/val{self.de_filepath_suffix}', f'{data_directory}/val{self.en_filepath_suffix}', self.num_training_samples)
+        self.test_dataset = LineIndexDataset(f'{data_directory}/test{self.de_filepath_suffix}', f'{data_directory}/test{self.en_filepath_suffix}', self.num_training_samples)
+
+    def train_dataloader(self):
+        sampler = torch.utils.data.RandomSampler(self.train_dataset)
+        batch_sampler = LengthBatchSampler(sampler, batch_size=self.batch_size, drop_last=False,
+                                           dataset=self.train_dataset)
+        return DataLoader(self.train_dataset, batch_sampler=batch_sampler, collate_fn=self._collate_function)
+
+    def val_dataloader(self):
+        sampler = torch.utils.data.SequentialSampler(self.val_dataset)
+        batch_sampler = LengthBatchSampler(sampler, batch_size=self.batch_size, drop_last=False,
+                                           dataset=self.val_dataset)
+        return DataLoader(self.val_dataset, batch_sampler=batch_sampler, collate_fn=self._collate_function)
+
+    def test_dataloader(self):
+        sampler = torch.utils.data.SequentialSampler(self.test_dataset)
+        batch_sampler = LengthBatchSampler(sampler, batch_size=self.batch_size, drop_last=False,
+                                           dataset=self.test_dataset)
+        return DataLoader(self.test_dataset, batch_sampler=batch_sampler, collate_fn=self._collate_function)
+
+    def _collate_function(self, batch):
+        input_tensors, expected_output_tensors = zip(*batch)
+        src_input_tensor = nn.utils.rnn.pad_sequence(
+            input_tensors,
+            batch_first=True,
+            padding_value=self.de_pad_token,
+        )
+        output_tensor = nn.utils.rnn.pad_sequence(
+            expected_output_tensors,
+            batch_first=True,
+            padding_value=self.en_pad_token,
+        )
+        src_input_tensor = src_input_tensor[:, :self.maximum_length]
+        output_tensor = output_tensor[:, :self.maximum_length]
+        tgt_input_tensor = output_tensor[:, :-1]
+        expected_output_tensor = output_tensor[:, 1:]
+
+        src_padding_mask = (src_input_tensor != self.de_pad_token)
+        tgt_padding_mask = (tgt_input_tensor != self.en_pad_token)
+
+        return src_input_tensor, tgt_input_tensor, expected_output_tensor, src_padding_mask, tgt_padding_mask
+
+    def get_tokenizer_values(self):
+        de_tokenizer = AutoTokenizer.from_pretrained('bert-base-german-cased')
+        en_tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        return de_tokenizer.convert_tokens_to_ids(de_tokenizer.pad_token), \
+            en_tokenizer.convert_tokens_to_ids(en_tokenizer.pad_token), \
+            de_tokenizer.vocab_size, en_tokenizer.vocab_size
 
 class LineIndexDataset(Dataset):
     def __init__(self, input_filepath, expected_output_filepath, num_training_samples):
@@ -58,69 +129,40 @@ class MappedFile:
         end = self.line_offsets[line_number + 1]
         return self.mm[start:end].decode('utf-8').strip()
 
-class MachineTranslationDataModule(pl.LightningDataModule):
-    def __init__(self,
-                 en_filepath_suffix: str,
-                 de_filepath_suffix: str,
-                 maximum_length,
-                 batch_size,
-                 num_training_samples,
-                 ):
 
-        super().__init__()
-        self.en_filepath_suffix = en_filepath_suffix
-        self.de_filepath_suffix = de_filepath_suffix
-        self.maximum_length = maximum_length
+class LengthBatchSampler(BatchSampler):
+    def __init__(self, sampler: Sampler, batch_size: int, drop_last: bool = False, dataset=None):
+        if not isinstance(sampler, Sampler):
+            raise ValueError(
+                f"Expected sampler to be an instance of torch.utils.data.Sampler, got {type(sampler)} instead.")
+
+        self.sampler = sampler
         self.batch_size = batch_size
-        self.num_training_samples = num_training_samples
-        self.de_pad_token, self.en_pad_token, self.de_vocab_size, self.en_vocab_size = self.get_tokenizer_values()
+        self.drop_last = drop_last
 
-    def setup(self, stage=None):
-        self.train_dataset = LineIndexDataset(f'{data_directory}/train{self.de_filepath_suffix}', f'{data_directory}/train{self.en_filepath_suffix}', self.num_training_samples)
-        self.val_dataset = LineIndexDataset(f'{data_directory}/val{self.de_filepath_suffix}', f'{data_directory}/val{self.en_filepath_suffix}', self.num_training_samples)
-        self.test_dataset = LineIndexDataset(f'{data_directory}/test{self.de_filepath_suffix}', f'{data_directory}/test{self.en_filepath_suffix}', self.num_training_samples)
+        if hasattr(sampler, 'data_source') and hasattr(sampler.data_source, 'lengths'):
+            self.lengths = sampler.data_source.lengths
+        elif dataset is not None and hasattr(dataset, 'lengths'):
+            self.lengths = dataset.lengths
+        else:
+            raise ValueError("Sampler must have a dataset with 'lengths' attribute or a dataset must be provided.")
 
-    def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size = self.batch_size, collate_fn=self._collate_function, shuffle=True)
+    def __iter__(self):
+        indices = list(self.sampler)
+        indices.sort(key=lambda i: self.lengths[i])
 
-    def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size = self.batch_size, collate_fn=self._collate_function)
+        batches = [indices[i:i + self.batch_size] for i in range(0, len(indices), self.batch_size)]
+        if self.drop_last and len(batches[-1]) < self.batch_size:
+            batches.pop()
 
-    def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size = self.batch_size, collate_fn=self._collate_function)
+        # Shuffle batches if using a random sampler
+        if isinstance(self.sampler, torch.utils.data.RandomSampler):
+            random.shuffle(batches)
 
-    def _collate_function(self, batch):
-        input_tensors, expected_output_tensors = zip(*batch)
-        src_input_tensor = nn.utils.rnn.pad_sequence(
-            input_tensors,
-            batch_first=True,
-            padding_value=self.de_pad_token,
-        )
-        output_tensor = nn.utils.rnn.pad_sequence(
-            expected_output_tensors,
-            batch_first=True,
-            padding_value=self.en_pad_token,
-        )
-        src_input_tensor = src_input_tensor[:, :self.maximum_length]
-        output_tensor = output_tensor[:, :self.maximum_length]
-        tgt_input_tensor = output_tensor[:, :-1]
-        expected_output_tensor = output_tensor[:, 1:]
+        yield from batches
 
-        src_padding_mask = (src_input_tensor != self.de_pad_token)
-        tgt_padding_mask = (tgt_input_tensor != self.en_pad_token)
-
-        return src_input_tensor, tgt_input_tensor, expected_output_tensor, src_padding_mask, tgt_padding_mask
-
-    def get_tokenizer_values(self):
-        de_tokenizer = AutoTokenizer.from_pretrained('bert-base-german-cased')
-        en_tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-        return de_tokenizer.convert_tokens_to_ids(de_tokenizer.pad_token), \
-            en_tokenizer.convert_tokens_to_ids(en_tokenizer.pad_token), \
-            de_tokenizer.vocab_size, en_tokenizer.vocab_size
-
-
-import torch
-from torch import nn
+    def __len__(self):
+        return len(self.sampler) // self.batch_size if self.drop_last else (len(self.sampler) + self.batch_size - 1) // self.batch_size
 
 class LabelSmoothingLoss(nn.Module):
     """
