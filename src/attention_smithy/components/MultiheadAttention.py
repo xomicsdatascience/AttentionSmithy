@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Union
-from attention_smithy.attention import BigBirdAttentionMethod, StandardAttentionMethod
+from attention_smithy.attention import StandardAttentionMethod
 from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 
 class MultiheadAttention(nn.Module):
@@ -22,7 +22,7 @@ class MultiheadAttention(nn.Module):
     def __init__(self,
                  embedding_dimension: int,
                  number_of_heads: int,
-                 attention_method: Union[BigBirdAttentionMethod, StandardAttentionMethod],
+                 attention_method: StandardAttentionMethod,
                  ) -> None:
         """
         Args:

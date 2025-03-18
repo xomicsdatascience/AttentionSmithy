@@ -1,2 +1,1 @@
-from attention_smithy.attention.BigBirdAttentionMethod import BigBirdAttentionMethod
 from attention_smithy.attention.StandardAttentionMethod import StandardAttentionMethod

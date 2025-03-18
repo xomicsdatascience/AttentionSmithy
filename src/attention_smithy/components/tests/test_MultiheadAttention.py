@@ -1,7 +1,7 @@
 import pytest
 import torch
 import re
-from attention_smithy.attention import StandardAttentionMethod, BigBirdAttentionMethod
+from attention_smithy.attention import StandardAttentionMethod
 from attention_smithy.components import MultiheadAttention
 from attention_smithy.numeric_embeddings import NumericEmbeddingManager, RotaryPositionEmbedding
 

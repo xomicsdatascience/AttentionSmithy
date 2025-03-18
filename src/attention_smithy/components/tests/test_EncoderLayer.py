@@ -1,7 +1,7 @@
 import pytest
 import torch
 from attention_smithy.components import EncoderLayer, MultiheadAttention, FeedForwardNetwork
-from attention_smithy.attention import StandardAttentionMethod, BigBirdAttentionMethod
+from attention_smithy.attention import StandardAttentionMethod
 from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 
 @pytest.fixture
@@ -70,15 +70,4 @@ def global_tokens(batch_size, num_blocks, block_size):
 
 def test__EncoderLayer__works_with_standard_self_attention(input_tensor, numeric_embedding_manager, standard_encoder_layer):
     output = standard_encoder_layer(src=input_tensor, src_padding_mask=None, numeric_embedding_manager=numeric_embedding_manager)
-    assert output.shape == input_tensor.shape
-
-@pytest.mark.skip(reason="Big Bird not implemented")
-def test__EncoderLayer__works_with_big_bird_self_attention(input_tensor, numeric_embedding_manager, big_bird_encoder_layer, global_tokens):
-    output = big_bird_encoder_layer(
-        src=input_tensor,
-        src_padding_mask=None,
-        numeric_embedding_manager=numeric_embedding_manager,
-        global_tokens_query=global_tokens,
-        global_tokens_kv=global_tokens,
-    )
     assert output.shape == input_tensor.shape
