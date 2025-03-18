@@ -14,13 +14,18 @@ jobs:
     - name: Checkout the repository
       uses: actions/checkout@v4
       with:
-        fetch-depth: 2
+        fetch-depth: 0
+
+    - name: Fetch main branch
+      run: |
+        git fetch origin main --depth=1
+        git checkout main
+        git pull origin main
 
     - name: Check for changes in src directory
       id: check_changes
       run: |
-        git fetch origin main --depth=1
-        CHANGED_FILES=$(git diff --name-only origin/main...HEAD | grep "^src/")
+        CHANGED_FILES=$(git diff --name-only main...HEAD | grep "^src/" || true)
         
         if [[ -z "$CHANGED_FILES" ]]; then
           echo "No changes detected in src/. Skipping version check."
@@ -39,8 +44,7 @@ jobs:
 
     - name: Fetch the latest version from main
       run: |
-        git fetch origin main --depth=1
-        PREV_VERSION=$(git show origin/main:pyproject.toml | grep -Po '(?<=version = ")[^"]*')
+        PREV_VERSION=$(git show main:pyproject.toml | grep -Po '(?<=version = ")[^"]*')
         echo "PREV_VERSION=$PREV_VERSION" >> $GITHUB_ENV
         echo "Previous version: $PREV_VERSION"
 
