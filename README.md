@@ -9,6 +9,49 @@ The baseline code was originally inspired by [The Annotated Transformer](https:/
 - [machine translation](https://github.com/xomicsdatascience/machine-translation), including an neural architecture search (NAS) setup
 - [geneformer](https://github.com/xomicsdatascience/geneformer)
 
+## Future Directions
+<div align="center">
+
+---
+🤝 **Join the conversation!** 🤝
+
+As you read and have ideas, please go to the [Discussions tab](https://github.com/xomicsdatascience/AttentionSmithy/discussions) of this repository and share them with us. We have ideas for future extensions and applications, and would love your input.
+
+---
+</div>
+
+
+## Setting Up the Python Environment
+
+To ensure compatibility, use Python 3.9 or greater. You can set up the environment using either Conda or a virtual environment with `venv`.
+
+### Using Conda
+
+1. Create a new Conda environment:
+   ```sh
+   conda create --name as_env python
+   ```
+2. Activate the environment:
+   ```sh
+   conda activate as_env
+   ```
+
+### Using venv
+
+1. Create a virtual environment:
+   ```sh
+   python -m venv as_env
+   ```
+2. Activate the environment:
+   - On macOS/Linux:
+     ```sh
+     source as_env/bin/activate
+     ```
+   - On Windows:
+     ```sh
+     as_env\Scripts\activate
+     ```
+
 ## Installation
 
 You can install `attention-smithy` using either of the following methods:
@@ -32,17 +75,6 @@ pip install -e .
 ```
 
 This method is recommended if you want to work with the latest source code or contribute to the project.
-
-## Future Directions
-<div align="center">
-
----
-🤝 **Join the conversation!** 🤝
-
-As you read and have ideas, please go to the [Discussions tab](https://github.com/xomicsdatascience/AttentionSmithy/discussions) of this repository and share them with us. We have ideas for future extensions and applications, and would love your input.
-
----
-</div>
 
 ## AttentionSmithy Components
 
