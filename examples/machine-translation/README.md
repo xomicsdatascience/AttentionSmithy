@@ -10,9 +10,40 @@ The model is created using pytorch lightning to streamline data loading, GPU all
 
 To run this project efficiently, your computer should have a GPU with CUDA (for NVIDIA GPUs) or MPS (for MacBooks with Apple Silicon). Running on a CPU is possible but significantly slower.
 
-## Installation
+## Setting Up the Python Environment
 
-Before running the model, install the necessary dependencies using `pip` in a pip or conda environment:
+To ensure compatibility, use Python 3.9 or greater. You can set up the environment using either Conda or a virtual environment with `venv`.
+
+### Using Conda
+
+1. Create a new Conda environment:
+   ```sh
+   conda create --name mtm_env python
+   ```
+2. Activate the environment:
+   ```sh
+   conda activate mtm_env
+   ```
+
+### Using venv
+
+1. Create a virtual environment:
+   ```sh
+   python -m venv mtm_env
+   ```
+2. Activate the environment:
+   - On macOS/Linux:
+     ```sh
+     source mtm_env/bin/activate
+     ```
+   - On Windows:
+     ```sh
+     mtm_env\Scripts\activate
+     ```
+
+### Installation
+
+Once the environment is set up and activated, install the necessary packages:
 
 ```sh
 pip install attention-smithy datasets
