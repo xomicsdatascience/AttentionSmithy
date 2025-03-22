@@ -1,7 +1,6 @@
 import torch
 from torch import nn
-from attention_smithy.components import SublayerUnit, MultiheadAttention, FeedForwardNetwork
-from attention_smithy.models import Encoder
+from attention_smithy.components import SublayerUnit, MultiheadAttention, FeedForwardNetwork, Encoder
 
 class PerceiverEncoderLayer(nn.Module):
     """
