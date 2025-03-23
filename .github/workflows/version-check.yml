@@ -1,0 +1,59 @@
+name: Version Check
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for proper diffing
+
+    - name: Fetch main branch
+      run: |
+        git fetch origin main --depth=1
+
+    - name: Check for changes in src directory
+      id: check_changes
+      run: |
+        CHANGED_FILES=$(git diff --name-only origin/main HEAD -- "src/")
+        
+        if [[ -z "$CHANGED_FILES" ]]; then
+          echo "No changes detected in src/. Skipping version check."
+          echo "SKIP_VERSION_CHECK=true" >> $GITHUB_ENV
+        else
+          echo "Changes detected in src/:"
+          echo "$CHANGED_FILES"
+          echo "Version check required."
+          echo "SKIP_VERSION_CHECK=false" >> $GITHUB_ENV
+        fi
+
+    - name: Extract version from pyproject.toml
+      id: current_version
+      run: |
+        VERSION=$(grep -Po '(?<=version = ")[^"]*' pyproject.toml)
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Current version: $VERSION"
+
+    - name: Fetch the latest version from main
+      run: |
+        PREV_VERSION=$(git show origin/main:pyproject.toml | grep -Po '(?<=version = ")[^"]*')
+        echo "PREV_VERSION=$PREV_VERSION" >> $GITHUB_ENV
+        echo "Previous version: $PREV_VERSION"
+
+    - name: Compare versions if needed
+      if: env.SKIP_VERSION_CHECK == 'false'
+      run: |
+        if [ "$VERSION" == "$PREV_VERSION" ]; then
+          echo "❌ Version has not been incremented! Please update the version in pyproject.toml."
+          exit 1
+        else
+          echo "✅ Version has been incremented."
+        fi
