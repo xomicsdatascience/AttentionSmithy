@@ -47,6 +47,7 @@ class Decoder(nn.Module):
         """
         for idx, module in enumerate(self.layers):
             if idx < number_of_layers:
+                module.eval()
                 for param in module.parameters():
                     param.requires_grad = False
 
