@@ -3,6 +3,7 @@ import os
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 import copy
 
 def repeat_module_consecutively(
@@ -66,9 +67,52 @@ def create_causal_mask(
     return subsequent_mask == 0
 
 
-def select_activation_function_module(
-        activation_param: str,
-) -> nn.Module:
+class ReGLU(nn.Module):
+    """
+    ReGLU: Gated Linear Unit variant that uses ReLU for gating.
+    Splits the last dimension into two halves, applies ReLU to the first,
+    and multiplies elementwise with the second half.
+    """
+    def forward(self, x):
+        a, b = x.chunk(2, dim=-1)
+        return F.relu(a) * b
+
+class GEGLU(nn.Module):
+    """
+    GEGLU: Gated Linear Unit variant that uses GELU for gating.
+    Splits the last dimension into two halves, applies GELU to the first,
+    and multiplies elementwise with the second half.
+    """
+    def forward(self, x):
+        a, b = x.chunk(2, dim=-1)
+        return F.gelu(a) * b
+
+class Squareplus(nn.Module):
+    """
+    Squareplus activation function.
+    Defined as: (x + sqrt(x^2 + b)) / 2.
+    The parameter `b` can be adjusted; default is 4.0.
+    """
+    def __init__(self, b: float = 4.0):
+        super().__init__()
+        self.b = b
+
+    def forward(self, x):
+        return 0.5 * (x + torch.sqrt(x**2 + self.b))
+
+class EATLU(nn.Module):
+    """
+    Expanded ArcTan Linear Unit (EATLU).
+    Applies arctan to the input scaled by a learnable parameter alpha.
+    """
+    def __init__(self, alpha: float = 1.0):
+        super().__init__()
+        self.alpha = nn.Parameter(torch.tensor(alpha))
+
+    def forward(self, x):
+        return x * torch.arctan(self.alpha * x)
+
+def select_activation_function_module(activation_param: str, **kwargs) -> nn.Module:
     if activation_param == "relu":
         return nn.ReLU()
     elif activation_param == "leaky_relu_steep":
@@ -85,6 +129,20 @@ def select_activation_function_module(
         return nn.SELU()
     elif activation_param == "gelu":
         return nn.GELU()
+    elif activation_param == "silu" or activation_param == "swish":
+        return nn.SiLU()
+    elif activation_param == "mish":
+        return nn.Mish()
+    elif activation_param == "reglu":
+        return ReGLU()
+    elif activation_param == "geglu":
+        return GEGLU()
+    elif activation_param == "squareplus":
+        return Squareplus(**kwargs)
+    elif activation_param == "eatlu":
+        return EATLU(**kwargs)
+    else:
+        raise ValueError(f"Unsupported activation function: {activation_param}")
 
 def get_available_gpu_count():
     if torch.cuda.is_available():
