@@ -1,7 +1,8 @@
 import torch
 from torch import nn
+from typing import Union
 from attention_smithy.components import SublayerUnit, MultiheadAttention, FeedForwardNetwork
-
+from attention_smithy.components.sublayer_helpers import wrap_sublayer
 class DecoderLayer(nn.Module):
     """
     A single decoder layer as described in the Attention is All You Need paper.
@@ -10,13 +11,14 @@ class DecoderLayer(nn.Module):
         single cross attenion sublayer, followed by a feed forward network
         sublayer.
     """
-    def __init__(self,
-                 embedding_dimension: int,
-                 self_attention: MultiheadAttention,
-                 cross_attention: MultiheadAttention,
-                 feed_forward: FeedForwardNetwork,
-                 dropout: float,
-                 ) -> None:
+    def __init__(
+        self,
+        embedding_dimension: int,
+        self_attention: Union[MultiheadAttention, SublayerUnit],
+        cross_attention: Union[MultiheadAttention, SublayerUnit],
+        feed_forward: Union[FeedForwardNetwork, SublayerUnit],
+        dropout: float,
+    ) -> None:
         """
         Args:
             embedding_dimension (int): The token embedding dimension size.
@@ -27,12 +29,16 @@ class DecoderLayer(nn.Module):
             dropout (float, optional): The dropout probability. Defaults to 0.0.
         """
         super().__init__()
-        if self_attention.attention_method.is_causal_masking == False:
-            raise RuntimeWarning("CAUTION: your decoder layer self attention method has `is_causal_masking` is set to False. This would render most decoder strategies ineffective.")
-        self.self_attention_sublayer = SublayerUnit(self_attention, embedding_dimension, dropout)
-        self.cross_attention_sublayer = SublayerUnit(cross_attention, embedding_dimension, dropout)
-        self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)
+        self.self_attention_sublayer = wrap_sublayer(self_attention, embedding_dimension, dropout)
+        self.cross_attention_sublayer = wrap_sublayer(cross_attention, embedding_dimension, dropout)
+        self.feed_forward_sublayer = wrap_sublayer(feed_forward, embedding_dimension, dropout)
         self.embedding_dimension = embedding_dimension
+        if not self.self_attention_sublayer.sublayer_module.attention_method.is_causal_masking:
+            raise RuntimeWarning(
+                "CAUTION: your decoder layer self attention method has `is_causal_masking` set to False. "
+                "This would render most decoder strategies ineffective."
+            )
+
 
     def forward(self,
                 tgt: torch.Tensor,
