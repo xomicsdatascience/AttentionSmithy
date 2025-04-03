@@ -5,6 +5,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import copy
+import inspect
 
 def repeat_module_consecutively(
         module: nn.Module,
@@ -143,6 +144,37 @@ def select_activation_function_module(activation_param: str, **kwargs) -> nn.Mod
         return EATLU(**kwargs)
     else:
         raise ValueError(f"Unsupported activation function: {activation_param}")
+
+
+def select_normalization_module(norm_type: str, **kwargs) -> nn.Module:
+    """
+    Creates a normalization module based on the provided type.
+
+    Args:
+        norm_type (str): A string identifier for the normalization type. Supported values are:
+            - "layernorm": Standard Layer Normalization (torch.nn.LayerNorm).
+            - "rmsnorm": Root Mean Square Layer Normalization (torch.nn.RMSNorm).
+            - None: No normalization; returns a pass-through module (nn.Identity).
+        **kwargs: Additional keyword arguments required for module initialization
+                  (for example, normalized_shape).
+
+    Returns:
+        nn.Module: The corresponding normalization module.
+    """
+    if norm_type is None:
+        return nn.Identity()
+    norm_type = norm_type.lower()
+    if "normalized_shape" not in kwargs:
+        kwargs["normalized_shape"] = kwargs["embedding_dimension"]
+    if norm_type == "layernorm":
+        params = inspect.signature(nn.LayerNorm).parameters
+        return nn.LayerNorm(**{k: v for k, v in kwargs.items() if k in params})
+    elif norm_type == "rmsnorm":
+        params = inspect.signature(nn.RMSNorm).parameters
+        return nn.RMSNorm(**{k: v for k, v in kwargs.items() if k in params})
+    else:
+        raise ValueError("Unsupported normalization type. Supported types are 'layernorm', 'rmsnorm', or None.")
+
 
 def get_available_gpu_count():
     if torch.cuda.is_available():

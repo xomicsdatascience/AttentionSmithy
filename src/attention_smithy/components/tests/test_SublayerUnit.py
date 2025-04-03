@@ -41,10 +41,10 @@ def test__SublayerUnit__postnorm_adds_output_of_sublayer_to_input(dummy_sublayer
     Since the dummy sublayer returns its input, expected output is:
         expected = LayerNorm(x + x)
     """
-    sublayer_unit = SublayerUnit(dummy_sublayer, embedding_dimension, dropout, use_prenorm=False)
-    fix_norm(sublayer_unit.norm)
+    sublayer_unit = SublayerUnit(dummy_sublayer, embedding_dimension, dropout)
+    fix_norm(sublayer_unit.post_norm)
 
-    expected = sublayer_unit.norm(random_input + random_input)
+    expected = sublayer_unit.post_norm(random_input + random_input)
     output = sublayer_unit(random_input)
 
     assert torch.allclose(output, expected, atol=1e-4)
@@ -58,10 +58,10 @@ def test__SublayerUnit__prenorm_adds_output_of_sublayer_to_input(dummy_sublayer,
     With the dummy sublayer, this reduces to:
         expected = x + LayerNorm(x)
     """
-    sublayer_unit = SublayerUnit(dummy_sublayer, embedding_dimension, dropout, use_prenorm=True)
-    fix_norm(sublayer_unit.norm)
+    sublayer_unit = SublayerUnit(dummy_sublayer, embedding_dimension, dropout, pre_norm_type="layernorm", post_norm_type=None)
+    fix_norm(sublayer_unit.pre_norm)
 
-    expected = random_input + sublayer_unit.norm(random_input)
+    expected = random_input + sublayer_unit.pre_norm(random_input)
     output = sublayer_unit(random_input)
 
     assert torch.allclose(output, expected, atol=1e-4)

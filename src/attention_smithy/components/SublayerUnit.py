@@ -1,7 +1,8 @@
 import torch
 from torch import nn
-from typing import Union
+from typing import Union, Optional
 from attention_smithy.components import MultiheadAttention, FeedForwardNetwork
+from attention_smithy.utils import select_normalization_module
 
 class SublayerUnit(nn.Module):
     """
@@ -17,7 +18,10 @@ class SublayerUnit(nn.Module):
     def __init__(self,
                  sublayer_module: Union[MultiheadAttention, FeedForwardNetwork],
                  embedding_dimension: int,
-                 dropout: float
+                 dropout: float,
+                 pre_norm_type: Optional[str] = None,
+                 post_norm_type: Optional[str] = "layernorm",
+                 **kwargs,
                  ) -> None:
         """
         Args:
@@ -34,10 +38,11 @@ class SublayerUnit(nn.Module):
         self.norm = nn.LayerNorm(embedding_dimension)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self,
-                x: torch.Tensor,
-                **kwargs
-                ):
+
+        self.pre_norm = select_normalization_module(pre_norm_type, embedding_dimension=embedding_dimension, **kwargs)
+        self.post_norm = select_normalization_module(post_norm_type, embedding_dimension=embedding_dimension, **kwargs)
+
+    def forward(self, x: torch.Tensor, **kwargs) -> torch.Tensor:
         """
         Args:
             x (torch.Tensor): The tokenized input data of shape
@@ -49,9 +54,10 @@ class SublayerUnit(nn.Module):
             out (torch.Tensor): The output tensor, of shape
                 (batch_size, sequence_length, embedding_dimension).
         """
-        out = self.sublayer_module(x, **kwargs)
+        x_pre = self.pre_norm(x)
+        out = self.sublayer_module(x_pre, **kwargs)
         if isinstance(out, tuple):
             out = out[0]
         out = self.dropout(out)
         out = x + out
-        return self.norm(out)
+        return self.post_norm(out)
