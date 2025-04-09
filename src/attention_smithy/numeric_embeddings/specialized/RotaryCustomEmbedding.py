@@ -27,13 +27,13 @@ class RotaryCustomEmbedding(MatrixModificationStrategyBase):
     def forward(
         self,
         target_matrix: torch.Tensor,
-        rotary_custom_positions: torch.Tensor,
+        rotary_custom_values: torch.Tensor,
         seq_dim: Optional[int] = None
     ) -> torch.Tensor:
         """
         Args:
             target_matrix (torch.Tensor): The input Q or K matrix of shape (..., seq_len, dim).
-            rotary_custom_positions (torch.Tensor): Float tensor of shape (seq_len,) specifying custom position values.
+            rotary_custom_values (torch.Tensor): Float tensor of shape (seq_len,) specifying custom position values.
             seq_dim (int, optional): The dimension in `tensor` corresponding to sequence length. Defaults to -2.
 
         Returns:
@@ -42,10 +42,10 @@ class RotaryCustomEmbedding(MatrixModificationStrategyBase):
         seq_dim = seq_dim if seq_dim is not None else -2
         seq_len = target_matrix.shape[seq_dim]
 
-        if rotary_custom_positions.shape[0] != seq_len:
-            raise ValueError(f"rotary_custom_positions length {rotary_custom_positions.shape[0]} must match sequence length {seq_len}")
+        if rotary_custom_values.shape[0] != seq_len:
+            raise ValueError(f"rotary_custom_values length {rotary_custom_values.shape[0]} must match sequence length {seq_len}")
 
-        freqs = self.rotary.forward(rotary_custom_positions, seq_len=seq_len)
+        freqs = self.rotary.forward(rotary_custom_values, seq_len=seq_len)
 
         if seq_dim == -3:
             freqs = rearrange(freqs, 'n d -> n 1 d')
