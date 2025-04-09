@@ -16,7 +16,7 @@ class RotaryCustomEmbedding(MatrixModificationStrategyBase):
     def __init__(self, head_dimension: int):
         """
         Args:
-            dim (int): Embedding dimension per attention head (must be divisible by 2).
+            head_dimension (int): Embedding dimension per attention head (must be divisible by 2).
         """
         super().__init__()
         self.rotary = RotaryEmbedding(dim=head_dimension, cache_if_possible=False)
