@@ -19,8 +19,6 @@ class NumericEmbeddingStrategyBase(ABC, nn.Module):
         """
         pass
 
-from abc import ABC, abstractmethod
-
 class MatrixModificationStrategyBase(ABC, nn.Module):
     """
     Abstract base class for strategies that modify or transform matrices.
@@ -37,8 +35,6 @@ class MatrixModificationStrategyBase(ABC, nn.Module):
             Modified versions of the provided matrices.
         """
         pass
-
-from abc import ABC, abstractmethod
 
 class AttentionBiasStrategyBase(ABC, nn.Module):
     """
