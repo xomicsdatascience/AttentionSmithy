@@ -6,4 +6,4 @@ from attention_smithy.numeric_embeddings.NumericEmbeddingManager import NumericE
 
 from attention_smithy.numeric_embeddings.specialized.SinusoidalCustomEmbedding import SinusoidalCustomEmbedding
 from attention_smithy.numeric_embeddings.specialized.ALiBiCustomEmbedding import ALiBiCustomEmbedding
-
+from attention_smithy.numeric_embeddings.specialized.RotaryCustomEmbedding import RotaryCustomEmbedding
