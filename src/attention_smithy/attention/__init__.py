@@ -1,0 +1,1 @@
+from attention_smithy.attention.StandardAttentionMethod import StandardAttentionMethod
