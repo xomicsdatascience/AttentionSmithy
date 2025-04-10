@@ -28,7 +28,8 @@ class RotaryCustomEmbedding(MatrixModificationStrategyBase):
         self,
         target_matrix: torch.Tensor,
         rotary_custom_values: torch.Tensor,
-        seq_dim: Optional[int] = None
+        seq_dim: Optional[int] = None,
+        **kwargs,
     ) -> torch.Tensor:
         """
         Args:
@@ -42,12 +43,14 @@ class RotaryCustomEmbedding(MatrixModificationStrategyBase):
         seq_dim = seq_dim if seq_dim is not None else -2
         seq_len = target_matrix.shape[seq_dim]
 
-        if rotary_custom_values.shape[0] != seq_len:
-            raise ValueError(f"rotary_custom_values length {rotary_custom_values.shape[0]} must match sequence length {seq_len}")
-
+        if rotary_custom_values.shape[-1] != seq_len:
+            raise ValueError(
+                f"Expected rotary_custom_values with sequence length {seq_len} in the last dimension, "
+                f"but got shape {rotary_custom_values.shape}"
+            )
         freqs = self.rotary.forward(rotary_custom_values, seq_len=seq_len)
 
-        if seq_dim == -3:
-            freqs = rearrange(freqs, 'n d -> n 1 d')
+        if freqs.ndim == 3 and target_matrix.ndim == 4:
+            freqs = freqs.unsqueeze(1)
 
         return apply_rotary_emb(freqs, target_matrix, seq_dim=seq_dim)
