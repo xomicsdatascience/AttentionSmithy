@@ -8,6 +8,86 @@ class LongformerAttentionMethod(nn.Module):
         self.attention_window = attention_window
         self.dropout_layer = nn.Dropout(dropout)
 
+        # Separate projection for global queries (mimicking original Longformer)
+        self.query_global = nn.Identity()  # replace with nn.Linear if needed
+
+    def forward(self, q, k, v, numeric_embedding_manager, attention_mask=None, **kwargs):
+        print('\n'*10)
+        batch_size, num_heads, seq_len, head_dim = q.size()
+        assert attention_mask is not None, "attention_mask is required for global attention"
+
+        # Shape: (batch_size * num_heads, seq_len, head_dim)
+        q = q.reshape(batch_size * num_heads, seq_len, head_dim)
+        k = k.reshape(batch_size * num_heads, seq_len, head_dim)
+        v = v.reshape(batch_size * num_heads, seq_len, head_dim)
+
+        # (batch_size, seq_len) -> (batch_size * num_heads, seq_len)
+        is_global = attention_mask > 0
+        is_global = is_global.unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len)
+
+        # All tokens attend to global tokens
+        global_indices = is_global.nonzero(as_tuple=False)  # [num_global, 1+1]
+        context = torch.zeros_like(q)
+
+        if global_indices.numel() == 0:
+            # No global tokens — return zeros
+            context = context.view(batch_size, num_heads, seq_len, head_dim)
+            attn_probs = torch.zeros(batch_size, num_heads, seq_len, seq_len, device=q.device)
+            return context, attn_probs
+
+        # Step 1: All tokens attending to global tokens
+        # Select global k/v: [batch*num_heads, num_global, head_dim]
+        global_k = torch.zeros(batch_size * num_heads, seq_len, head_dim, device=q.device)
+        global_v = torch.zeros_like(global_k)
+
+        for b in range(batch_size * num_heads):
+            idxs = is_global[b].nonzero(as_tuple=False).squeeze(-1)
+            global_k[b, :len(idxs)] = k[b, idxs]
+            global_v[b, :len(idxs)] = v[b, idxs]
+        # Compute attention: [B*N, T, H] @ [B*N, H, G] -> [B*N, T, G]
+        # Here we do full attention *to* global tokens
+        attn_scores = torch.bmm(q, global_k.transpose(1, 2)) / torch.sqrt(torch.tensor(head_dim, dtype=torch.float32))
+
+        mask = torch.arange(seq_len, device=q.device).unsqueeze(0) >= is_global.sum(dim=1, keepdim=True)
+        mask = mask.expand(batch_size * num_heads, -1)  # shape: [B*N, G]
+        attn_scores = attn_scores.masked_fill(mask.unsqueeze(1), float('-inf'))
+
+        attn_probs = F.softmax(attn_scores, dim=-1, dtype=torch.float32)
+        attn_probs = self.dropout_layer(attn_probs)
+        # Context for all tokens: weighted sum over global values
+        context = torch.bmm(attn_probs, global_v)
+
+        # Step 2: Global tokens attending to all tokens (overwrite output)
+        q_global = self.query_global(q)  # Identity unless replaced with Linear
+
+        for b in range(batch_size * num_heads):
+            idxs = is_global[b].nonzero(as_tuple=False).squeeze(-1)
+            if idxs.numel() == 0:
+                continue
+            qg = q_global[b, idxs]  # [num_global, head_dim]
+            attn_scores_g = torch.matmul(qg, k[b].transpose(0, 1)) / torch.sqrt(torch.tensor(head_dim, dtype=torch.float32))# [num_global, T]
+            attn_probs_g = F.softmax(attn_scores_g, dim=-1, dtype=torch.float32)
+            attn_probs_g = self.dropout_layer(attn_probs_g)
+            context_g = torch.matmul(attn_probs_g, v[b])  # [num_global, head_dim]
+            context[b, idxs] = context_g
+
+        # Reshape back to original: [B, N, T, H]
+        context = context.view(batch_size, num_heads, seq_len, head_dim)
+
+        # Optional: For testing — build a dummy attention matrix with zeros
+        # You can optionally return attn_probs if needed
+        return context, attn_probs.view(batch_size, num_heads, seq_len, -1)
+'''
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class LongformerAttentionMethod(nn.Module):
+    def __init__(self, attention_window: int, dropout: float = 0.0):
+        super().__init__()
+        self.attention_window = attention_window
+        self.dropout_layer = nn.Dropout(dropout)
+
     def forward(self, q, k, v, numeric_embedding_manager, attention_mask=None, **kwargs):
         batch_size, num_heads, seq_len, head_dim = q.size()
         assert q.size() == k.size() == v.size()
@@ -26,7 +106,7 @@ class LongformerAttentionMethod(nn.Module):
         context = _sliding_chunks_matmul_pv(attn_probs, v, self.attention_window, batch_size, num_heads)
         context = context.view(batch_size, num_heads, seq_len, head_dim)
         return context, attn_probs
-
+'''
 def _slice_attention_score_chunks_into_exact_windows(attn_scores_in_chunks, window_size):
     diagonal = _skew_query_key_matrix(attn_scores_in_chunks, direction=(0, 0, 0, 1), padding_value=-float("inf"))
     batch_heads, chunks, _, _ = attn_scores_in_chunks.size()
