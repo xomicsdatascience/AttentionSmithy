@@ -7,76 +7,84 @@ class LongformerAttentionMethod(nn.Module):
         super().__init__()
         self.attention_window = attention_window
         self.dropout_layer = nn.Dropout(dropout)
-
-        # Separate projection for global queries (mimicking original Longformer)
-        self.query_global = nn.Identity()  # replace with nn.Linear if needed
+        self.query_global = nn.Identity()  # or replace with nn.Linear(...)
 
     def forward(self, q, k, v, numeric_embedding_manager, attention_mask=None, **kwargs):
-        print('\n'*10)
-        batch_size, num_heads, seq_len, head_dim = q.size()
-        assert attention_mask is not None, "attention_mask is required for global attention"
+        batch_size, num_heads, seq_len, head_dim = q.shape
+        device = q.device
+        scale = head_dim ** 0.5
 
-        # Shape: (batch_size * num_heads, seq_len, head_dim)
-        q = q.reshape(batch_size * num_heads, seq_len, head_dim)
-        k = k.reshape(batch_size * num_heads, seq_len, head_dim)
-        v = v.reshape(batch_size * num_heads, seq_len, head_dim)
+        assert attention_mask is not None
 
-        # (batch_size, seq_len) -> (batch_size * num_heads, seq_len)
+        # Merge heads into batch dim for easier handling
+        q = q.view(batch_size * num_heads, seq_len, head_dim)
+        k = k.view(batch_size * num_heads, seq_len, head_dim)
+        v = v.view(batch_size * num_heads, seq_len, head_dim)
+
+        # (B * N, T)
         is_global = attention_mask > 0
         is_global = is_global.unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len)
+        num_global = is_global.sum(dim=1)  # (B * N,)
+        max_global = num_global.max().item()
 
-        # All tokens attend to global tokens
-        global_indices = is_global.nonzero(as_tuple=False)  # [num_global, 1+1]
-        context = torch.zeros_like(q)
-
-        if global_indices.numel() == 0:
-            # No global tokens — return zeros
-            context = context.view(batch_size, num_heads, seq_len, head_dim)
-            attn_probs = torch.zeros(batch_size, num_heads, seq_len, seq_len, device=q.device)
+        if max_global == 0:
+            context = torch.zeros_like(q).view(batch_size, num_heads, seq_len, head_dim)
+            attn_probs = torch.zeros(batch_size, num_heads, seq_len, seq_len, device=device)
             return context, attn_probs
 
-        # Step 1: All tokens attending to global tokens
-        # Select global k/v: [batch*num_heads, num_global, head_dim]
-        global_k = torch.zeros(batch_size * num_heads, seq_len, head_dim, device=q.device)
-        global_v = torch.zeros_like(global_k)
+        # Step 1: All tokens attend to global tokens
 
-        for b in range(batch_size * num_heads):
-            idxs = is_global[b].nonzero(as_tuple=False).squeeze(-1)
-            global_k[b, :len(idxs)] = k[b, idxs]
-            global_v[b, :len(idxs)] = v[b, idxs]
-        # Compute attention: [B*N, T, H] @ [B*N, H, G] -> [B*N, T, G]
-        # Here we do full attention *to* global tokens
-        attn_scores = torch.bmm(q, global_k.transpose(1, 2)) / torch.sqrt(torch.tensor(head_dim, dtype=torch.float32))
+        # Extract (flat) indices of global tokens
+        b_idx, t_idx = is_global.nonzero(as_tuple=True)
+        global_kv = torch.zeros(batch_size * num_heads, max_global, head_dim, device=device)
+        global_kv_mask = torch.zeros(batch_size * num_heads, max_global, dtype=torch.bool, device=device)
 
-        mask = torch.arange(seq_len, device=q.device).unsqueeze(0) >= is_global.sum(dim=1, keepdim=True)
-        mask = mask.expand(batch_size * num_heads, -1)  # shape: [B*N, G]
-        attn_scores = attn_scores.masked_fill(mask.unsqueeze(1), float('-inf'))
+        # Create index ranges
+        global_index_pos = torch.zeros_like(is_global, dtype=torch.long)
+        global_counts = num_global.tolist()
+        # Generate per-row global indices (cumsum trick)
+        global_index_pos = is_global.cumsum(dim=1) - 1  # 0-based index for each global token
+        global_index_pos = global_index_pos.masked_fill(~is_global, 0)  # don't care for non-global
+        # Now scatter keys and values into padded tensors
+        global_kv[b_idx, global_index_pos[b_idx, t_idx]] = k[b_idx, t_idx]
+
+        global_v = torch.zeros(batch_size * num_heads, max_global, head_dim, device=device)
+        global_v[b_idx, global_index_pos[b_idx, t_idx]] = v[b_idx, t_idx]
+        # Mask indicating valid entries in padded global_kv
+        global_kv_mask[b_idx, global_index_pos[b_idx, t_idx]] = True
+
+        # Compute attention scores: all tokens -> global tokens
+        q_scaled = q / scale
+        attn_scores = torch.bmm(q_scaled, global_kv.transpose(1, 2))  # (B*N, T, G)
+        # Mask out padding in global positions
+        attn_scores = attn_scores.masked_fill(~global_kv_mask.unsqueeze(1), float('-inf'))
 
         attn_probs = F.softmax(attn_scores, dim=-1, dtype=torch.float32)
         attn_probs = self.dropout_layer(attn_probs)
-        # Context for all tokens: weighted sum over global values
-        context = torch.bmm(attn_probs, global_v)
+        context = torch.bmm(attn_probs, global_v)  # (B*N, T, H)
 
-        # Step 2: Global tokens attending to all tokens (overwrite output)
-        q_global = self.query_global(q)  # Identity unless replaced with Linear
+        # Step 2: Global tokens attend to all tokens
 
-        for b in range(batch_size * num_heads):
-            idxs = is_global[b].nonzero(as_tuple=False).squeeze(-1)
-            if idxs.numel() == 0:
-                continue
-            qg = q_global[b, idxs]  # [num_global, head_dim]
-            attn_scores_g = torch.matmul(qg, k[b].transpose(0, 1)) / torch.sqrt(torch.tensor(head_dim, dtype=torch.float32))# [num_global, T]
-            attn_probs_g = F.softmax(attn_scores_g, dim=-1, dtype=torch.float32)
-            attn_probs_g = self.dropout_layer(attn_probs_g)
-            context_g = torch.matmul(attn_probs_g, v[b])  # [num_global, head_dim]
-            context[b, idxs] = context_g
+        # Apply global projection to q if desired
+        q_global = self.query_global(q)  # (B*N, T, H)
 
-        # Reshape back to original: [B, N, T, H]
+        # Gather global queries
+        qg = q_global[b_idx, t_idx]  # (num_global_tokens, H)
+        kg = k[b_idx]                # (num_global_tokens, T, H)
+        vg = v[b_idx]                # (num_global_tokens, T, H)
+
+        attn_scores_g = torch.bmm(qg.unsqueeze(1), kg.transpose(1, 2)).squeeze(1) / scale  # (G, T)
+        attn_probs_g = F.softmax(attn_scores_g, dim=-1, dtype=torch.float32)
+        attn_probs_g = self.dropout_layer(attn_probs_g)
+        context_g = torch.bmm(attn_probs_g.unsqueeze(1), vg).squeeze(1)  # (G, H)
+
+        # Overwrite context for global tokens
+        context[b_idx, t_idx] = context_g
+
+        # Reshape back to (B, N, T, H)
         context = context.view(batch_size, num_heads, seq_len, head_dim)
-
-        # Optional: For testing — build a dummy attention matrix with zeros
-        # You can optionally return attn_probs if needed
         return context, attn_probs.view(batch_size, num_heads, seq_len, -1)
+
 '''
 import torch
 import torch.nn as nn
