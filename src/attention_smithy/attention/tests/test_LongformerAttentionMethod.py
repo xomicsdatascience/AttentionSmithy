@@ -8,11 +8,11 @@ from attention_smithy.numeric_embeddings import NumericEmbeddingManager
 def numeric_embedding_manager():
     return NumericEmbeddingManager([])
 
-def test__LongformerAttentionMethod__manual_mask_8x8_window2(numeric_embedding_manager):
+def test__LongformerAttentionMethod__manual_mask_8x8__window_width_2(numeric_embedding_manager):
     torch.manual_seed(0)
 
-    batch_size = 1
-    num_heads = 1
+    batch_size = 12
+    num_heads = 6
     seq_len = 8
     head_dim = 4
     window = 2
