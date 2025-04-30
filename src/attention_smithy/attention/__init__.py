@@ -1,1 +1,2 @@
 from attention_smithy.attention.StandardAttentionMethod import StandardAttentionMethod
+from attention_smithy.attention.LongformerAttentionMethod import LongformerAttentionMethod
