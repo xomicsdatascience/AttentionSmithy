@@ -47,13 +47,9 @@ def test__LongformerAttentionMethod__manual_mask_8x8_window2(numeric_embedding_m
         q, k, v,
         numeric_embedding_manager=numeric_embedding_manager,
     )
-    print('\n'*10)
-    print(output[0, 0])
-    print(expected_output[0, 0])
-
     assert torch.allclose(output, expected_output, atol=1e-4), "Attention outputs do not match"
 
-#@pytest.mark.skip(reason="using set, expected numbers to simplify the output.")
+@pytest.mark.skip(reason="using expected numbers to simplify the output for debugging purposes.")
 def test__LongformerAttentionMethod__manual_mask_8x8_window2__simplifed_printing_example(numeric_embedding_manager):
     torch.manual_seed(0)
 
@@ -63,10 +59,17 @@ def test__LongformerAttentionMethod__manual_mask_8x8_window2__simplifed_printing
     head_dim = 4
     window = 2
 
-    q = torch.ones((batch_size, num_heads, seq_len, head_dim))
-    k = torch.ones_like(q)
-    v_values = torch.arange(1, seq_len + 1, dtype=torch.float32)
-    v = v_values.view(1, 1, seq_len, 1).expand(batch_size, num_heads, -1, head_dim)
+    q = torch.ones(batch_size, num_heads, seq_len, head_dim)
+
+    # k: simple identity-like encoding (distinct per token)
+    k = torch.zeros(batch_size, num_heads, seq_len, head_dim)
+    for i in range(seq_len):
+        k[0, 0, i] = torch.tensor([i + 1, i + 2, i + 3, i + 4], dtype=torch.float32)
+
+    # v: now each token has a different vector across head dimensions
+    v = torch.zeros(batch_size, num_heads, seq_len, head_dim)
+    for i in range(seq_len):
+        v[0, 0, i] = torch.tensor([i + 0.1, i + 0.2, i + 0.3, i + 0.4], dtype=torch.float32)
 
     manual_mask = torch.tensor([
         [1, 1, 1, 0, 0, 0, 0, 0],  # 0 attends to 0,1,2
@@ -93,8 +96,8 @@ def test__LongformerAttentionMethod__manual_mask_8x8_window2__simplifed_printing
         q, k, v,
         numeric_embedding_manager=numeric_embedding_manager,
     )
-    print('\n' * 10)
-    print(output[0, 0])
-    print(expected_output[0, 0])
+    print('\n'*10)
+    print(output)
+    print(expected_output)
 
     assert torch.allclose(output, expected_output, atol=1e-4), "Attention outputs do not match"

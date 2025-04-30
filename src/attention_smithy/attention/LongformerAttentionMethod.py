@@ -11,6 +11,12 @@ def chunk(x, window_size):
     chunk_stride[1] = chunk_stride[1] // 2
     return x.as_strided(size=chunk_shape, stride=chunk_stride)
 
+def skew_query_key_matrix(x, direction, padding_value):
+    x_padded = F.pad(x, direction, value=padding_value)
+    x_padded = x_padded.view(*x_padded.size()[:-2], x_padded.size(-1), x_padded.size(-2))
+    return x_padded
+
+
 def mask_start_end_extra_local_tokens(attn_scores, window_size):
     batch_heads, seq_len, window = attn_scores.shape
     assert window == 2 * window_size + 1, f"Unexpected attention window shape {window} for window size {window_size}"
@@ -76,21 +82,16 @@ class LongformerAttentionMethod(nn.Module):
         _, _, head_dimension = q.shape
         chunk_q = chunk(q, window_size)
         chunk_k = chunk(k, window_size)
-        attn_scores = torch.einsum("bcxd,bcyd->bcxy", chunk_q, chunk_k) / torch.sqrt(torch.tensor(head_dimension, dtype=torch.float32))
-        batch_heads, chunks, _, _ = attn_scores.size()
-        diagonal_attn = attn_scores.new_full((batch_heads, chunks + 1, window_size, 2 * window_size + 1), float('-inf'))
-        # Edge-safe copying logic
-        if window_size > 1 and attn_scores.shape[2] > window_size:
-            diagonal_attn[:, :-1, :, window_size:] = attn_scores[:, :, :window_size, :window_size + 1]
-            num_rows = attn_scores[:, -1].shape[1]
-            diagonal_attn[:, -1, :, window_size:] = attn_scores[:, -1, -window_size:, :window_size + 1]
-            diagonal_attn[:, 1:, :, :window_size] = attn_scores[:, :, -(window_size + 1):-1, window_size + 1:]
-            diagonal_attn[:, 0, 1:window_size, 1:window_size] = attn_scores[:, 0, :window_size - 1, 1 - window_size:]
-        else:
-            diagonal_attn[:, :-1, :, window_size:] = attn_scores[:, :, :window_size, :window_size + 1]
-            diagonal_attn[:, -1, :, window_size:] = attn_scores[:, -1, window_size:, :window_size + 1]
-        final_attn_scores = diagonal_attn.view(batch_heads, -1, 2 * window_size + 1)
-        return final_attn_scores
+        attn_scores_in_chunks = torch.einsum("bcxd,bcyd->bcxy", chunk_q, chunk_k) / torch.sqrt(torch.tensor(head_dimension, dtype=torch.float32))
+        diagonal = skew_query_key_matrix(attn_scores_in_chunks, direction=(0,0,0,1), padding_value=-float("inf"))
+        batch_heads, chunks, _, _ = attn_scores_in_chunks.size()
+        diagonal_attn = diagonal.new_full((batch_heads, chunks + 1, window_size, 2 * window_size + 1), float('-inf'))
+        diagonal_attn[:, :-1, :, window_size:] = diagonal[:, :, :window_size, :window_size + 1]
+        diagonal_attn[:, -1, :, window_size:] = diagonal[:, -1, window_size:, :window_size + 1]
+        diagonal_attn[:, 1:, :, :window_size] = diagonal[:, :, -(window_size + 1):-1, window_size + 1:]
+        diagonal_attn[:, 0, 1:window_size, 1:window_size] = diagonal[:, 0, :window_size - 1, 1 - window_size:]
+        final_attention_scores = diagonal_attn.view(batch_heads, -1, 2 * window_size + 1)
+        return final_attention_scores
 
     def _naive_sliding_matmul_qk(self, q, k, window_size):
         """
