@@ -7,9 +7,8 @@ class LongformerAttentionMethod(nn.Module):
         super().__init__()
         self.attention_window = attention_window
         self.dropout_layer = nn.Dropout(dropout)
-        self.query_global = nn.Identity()  # Replace with nn.Linear if desired
 
-    def forward(self, q, k, v, numeric_embedding_manager, attention_mask=None, **kwargs):
+    def forward(self, q, k, v, numeric_embedding_manager, global_attention_mask=None, padding_and_loss_attention_mask=None, **kwargs):
         batch_size, num_heads, seq_len, head_dim = q.size()
         device = q.device
         scale = head_dim ** 0.5
@@ -21,21 +20,25 @@ class LongformerAttentionMethod(nn.Module):
         k = k.reshape(batch_size * num_heads, seq_len, head_dim)
         v = v.reshape(batch_size * num_heads, seq_len, head_dim)
 
+        if padding_and_loss_attention_mask is not None:
+            padding_mask = padding_and_loss_attention_mask.unsqueeze(1).expand(-1, num_heads, -1)
+            padding_mask = padding_mask.reshape(batch_size * num_heads, seq_len)
+        else:
+            padding_mask = None
+
         # Default: no global tokens
-        if attention_mask is None:
+        if global_attention_mask is None:
             is_global = torch.zeros(batch_size * num_heads, seq_len, dtype=torch.bool, device=device)
         else:
-            is_global = attention_mask > 0
+            is_global = global_attention_mask > 0
             is_global = is_global.unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len)
 
-        # Local attention
         local_attn_scores = _sliding_chunks_matmul_qk(q, k, self.attention_window)
-        local_attn_scores = _mask_local_attention_edges_and_globals(local_attn_scores, self.attention_window, is_global=is_global)
+        local_attn_scores = _mask_local_attention_edges_and_globals_and_padding(local_attn_scores, self.attention_window, is_global=is_global, padding_mask=padding_mask)
 
         num_global = is_global.sum(dim=1)
         max_global = num_global.max().item()
 
-        # If no global tokens, return local attention only
         if max_global == 0:
             attn_probs = F.softmax(local_attn_scores, dim=-1, dtype=torch.float32)
             attn_probs = self.dropout_layer(attn_probs)
@@ -43,7 +46,6 @@ class LongformerAttentionMethod(nn.Module):
             context = context.view(batch_size, num_heads, seq_len, head_dim)
             return context, attn_probs.view(batch_size, num_heads, seq_len, -1)
 
-        # Otherwise, include global attention
         b_idx, t_idx = is_global.nonzero(as_tuple=True)
 
         global_index_pos = is_global.cumsum(dim=1) - 1
@@ -56,6 +58,10 @@ class LongformerAttentionMethod(nn.Module):
         global_k[b_idx, global_index_pos[b_idx, t_idx]] = k[b_idx, t_idx]
         global_v[b_idx, global_index_pos[b_idx, t_idx]] = v[b_idx, t_idx]
         global_k_mask[b_idx, global_index_pos[b_idx, t_idx]] = True
+
+        if padding_mask is not None:
+            padding_global = padding_mask[b_idx, t_idx].bool()
+            global_k_mask[b_idx, global_index_pos[b_idx, t_idx]] &= padding_global
 
         q_scaled = q / scale
         global_attn_scores = torch.bmm(q_scaled, global_k.transpose(1, 2))  # (B*N, T, G)
@@ -72,17 +78,21 @@ class LongformerAttentionMethod(nn.Module):
         context_global = torch.bmm(global_probs, global_v)
         context = context_local + context_global
 
-        # Step 2: global tokens attend to all tokens
-        q_global = self.query_global(q)
-        qg = q_global[b_idx, t_idx]
+        qg = q[b_idx, t_idx]
         kg = k[b_idx]
         vg = v[b_idx]
+
         global_out_scores = torch.bmm(qg.unsqueeze(1), kg.transpose(1, 2)).squeeze(1) / scale
+
+        if padding_mask is not None:
+            kv_mask = padding_mask[b_idx]
+            global_out_scores = global_out_scores.masked_fill(kv_mask == 0, float('-inf'))
+            vg = vg.masked_fill(kv_mask.unsqueeze(-1) == 0, 0.0)
+
         global_out_probs = F.softmax(global_out_scores, dim=-1, dtype=torch.float32)
         global_out_probs = self.dropout_layer(global_out_probs)
         context_g = torch.bmm(global_out_probs.unsqueeze(1), vg).squeeze(1)
 
-        # Overwrite global token outputs
         context[b_idx, t_idx] = context_g
 
         context = context.view(batch_size, num_heads, seq_len, head_dim)
@@ -104,25 +114,25 @@ def _skew_query_key_matrix(x, direction, padding_value):
     x_padded = x_padded.view(*x_padded.size()[:-2], x_padded.size(-1), x_padded.size(-2))
     return x_padded
 
-def _mask_local_attention_edges_and_globals(attn_scores, window_size, is_global=None):
+def _mask_local_attention_edges_and_globals_and_padding(attn_scores, window_size, is_global=None, padding_mask=None):
     batch_heads, seq_len, window = attn_scores.shape
     assert window == 2 * window_size + 1, f"Unexpected attention window shape {window} for window size {window_size}"
     device = attn_scores.device
     center = window_size
 
     # Step 1: Sequence boundary masking (fully vectorized)
-    token_indices = torch.arange(seq_len, device=device).unsqueeze(1)         # (T, 1)
-    window_offsets = torch.arange(-window_size, window_size + 1, device=device).unsqueeze(0)  # (1, W)
-    rel_positions = token_indices + window_offsets  # (T, W)
+    token_indices = torch.arange(seq_len, device=device).unsqueeze(1)
+    window_offsets = torch.arange(-window_size, window_size + 1, device=device).unsqueeze(0)
+    rel_positions = token_indices + window_offsets
 
-    mask_out_of_bounds = (rel_positions < 0) | (rel_positions >= seq_len)  # (T, W)
+    mask_out_of_bounds = (rel_positions < 0) | (rel_positions >= seq_len)
     full_mask = mask_out_of_bounds  # (T, W)
 
-    attn_scores.masked_fill_(full_mask.unsqueeze(0), float('-inf'))  # (B*N, T, W)
+    attn_scores.masked_fill_(full_mask.unsqueeze(0), float('-inf'))
 
     # Step 2: Mask global tokens from local attention
     if is_global is not None:
-        is_global = is_global.bool()  # (B*N, T)
+        is_global = is_global.bool()
 
         # Lookup global token status for each relative position
         rel_positions = rel_positions.clamp(min=0, max=seq_len - 1)  # (T, W)
@@ -133,6 +143,16 @@ def _mask_local_attention_edges_and_globals(attn_scores, window_size, is_global=
         )  # → (B*N, T, W)
 
         attn_scores.masked_fill_(global_mask, float('-inf'))
+
+    if padding_mask is not None:
+        padding_mask = padding_mask.bool()
+        padding_mask_expanded = torch.gather(
+            padding_mask.unsqueeze(1).expand(-1, seq_len, -1),  # (B*N, T, T)
+            dim=2,
+            index=rel_positions.unsqueeze(0).expand(batch_heads, -1, -1)
+        )
+        attn_scores.masked_fill_(~padding_mask_expanded, float('-inf'))
+
 
     return attn_scores
 

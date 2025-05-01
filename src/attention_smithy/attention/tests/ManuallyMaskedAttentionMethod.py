@@ -34,13 +34,30 @@ class ManuallyMaskedAttentionMethod(StandardAttentionMethod):
 
     def _apply_manual_mask(self, attention_scores, manual_mask):
         """
-        manual_mask: (query_length, kv_length) binary mask, where 1 means allow, 0 means block
+        manual_mask:
+            - (query_length, kv_length): apply same mask across all batches and heads
+            - (batch_size, query_length, kv_length): apply per-batch mask, shared across heads
         """
-        if manual_mask.ndim != 2:
-            raise ValueError("manual_attention_mask must be 2D (query_length x key_length)")
+        batch_size, num_heads, query_length, key_length = attention_scores.shape
 
-        # Broadcast to (batch, heads, query_length, key_length)
-        manual_mask = manual_mask.to(device=attention_scores.device, dtype=attention_scores.dtype)
-        expanded_mask = manual_mask.unsqueeze(0).unsqueeze(0)
+        if manual_mask.ndim == 2:
+            if manual_mask.shape != (query_length, key_length):
+                raise ValueError(
+                    f"2D manual_attention_mask must have shape (query_length, key_length), got {manual_mask.shape}"
+                )
+            manual_mask = manual_mask.to(device=attention_scores.device, dtype=attention_scores.dtype)
+            expanded_mask = manual_mask.unsqueeze(0).unsqueeze(0)  # (1, 1, query, key)
+        elif manual_mask.ndim == 3:
+            if manual_mask.shape != (batch_size, query_length, key_length):
+                raise ValueError(
+                    f"3D manual_attention_mask must have shape (batch_size, query_length, key_length), got {manual_mask.shape}"
+                )
+            manual_mask = manual_mask.to(device=attention_scores.device, dtype=attention_scores.dtype)
+            expanded_mask = manual_mask.unsqueeze(1)  # (batch, 1, query, key)
+        else:
+            raise ValueError(
+                f"manual_attention_mask must be 2D or 3D, got {manual_mask.ndim}D"
+            )
+
         attention_scores = attention_scores.masked_fill(expanded_mask == 0, float("-inf"))
         return attention_scores
