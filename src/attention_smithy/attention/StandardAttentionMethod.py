@@ -54,7 +54,7 @@ class StandardAttentionMethod(nn.Module):
                 That masking is included in this mask tensor.
         Returns:
             attention_outputs (torch.Tensor): The output tensor, of shape
-                (batch_size, query_length, embedding_dimension).
+                (batch_size, num_heads, query_length, head_dim).
             attention_probablities (torch.Tensor): The attention probablity matrix calculated during the
                 attention method. Returned with the output for external analysis reasons. Of shape
                 (batch_size, number_of_heads, query_length, kv_length).
