@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
 
 class LongformerAttentionMethod(nn.Module):
     def __init__(self, attention_window: int, dropout: float = 0.0):
@@ -8,7 +9,7 @@ class LongformerAttentionMethod(nn.Module):
         self.attention_window = attention_window
         self.dropout_layer = nn.Dropout(dropout)
 
-    def forward(self, q, k, v, numeric_embedding_manager, global_attention_mask=None, padding_and_loss_attention_mask=None, **kwargs):
+    def _forward_inner(self, q, k, v, numeric_embedding_manager, global_attention_mask, padding_and_loss_attention_mask, **kwargs):
         batch_size, num_heads, seq_len, head_dim = q.size()
         device = q.device
         scale = head_dim ** 0.5
@@ -21,17 +22,14 @@ class LongformerAttentionMethod(nn.Module):
         v = v.reshape(batch_size * num_heads, seq_len, head_dim)
 
         if padding_and_loss_attention_mask is not None:
-            padding_mask = padding_and_loss_attention_mask.unsqueeze(1).expand(-1, num_heads, -1)
-            padding_mask = padding_mask.reshape(batch_size * num_heads, seq_len)
+            padding_mask = padding_and_loss_attention_mask.unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len)
         else:
             padding_mask = None
 
-        # Default: no global tokens
         if global_attention_mask is None:
             is_global = torch.zeros(batch_size * num_heads, seq_len, dtype=torch.bool, device=device)
         else:
-            is_global = global_attention_mask > 0
-            is_global = is_global.unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len).to(device)
+            is_global = global_attention_mask.bool().unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len).to(device)
 
         local_attn_scores = _sliding_chunks_matmul_qk(q, k, self.attention_window)
         local_attn_scores = _mask_local_attention_edges_and_globals_and_padding(local_attn_scores, self.attention_window, is_global=is_global, padding_mask=padding_mask)
@@ -40,11 +38,11 @@ class LongformerAttentionMethod(nn.Module):
         max_global = num_global.max().item()
 
         if max_global == 0:
-            attn_probs = F.softmax(local_attn_scores, dim=-1, dtype=torch.float32)
+            attn_probs = F.softmax(local_attn_scores, dim=-1)
             attn_probs = self.dropout_layer(attn_probs)
             context = _sliding_chunks_matmul_pv(attn_probs, v, self.attention_window, batch_size, num_heads)
             context = context.view(batch_size, num_heads, seq_len, head_dim)
-            return context, attn_probs.view(batch_size, num_heads, seq_len, -1)
+            return context, None
 
         b_idx, t_idx = is_global.nonzero(as_tuple=True)
 
@@ -64,11 +62,11 @@ class LongformerAttentionMethod(nn.Module):
             global_k_mask[b_idx, global_index_pos[b_idx, t_idx]] &= padding_global
 
         q_scaled = q / scale
-        global_attn_scores = torch.bmm(q_scaled, global_k.transpose(1, 2))  # (B*N, T, G)
+        global_attn_scores = torch.bmm(q_scaled, global_k.transpose(1, 2))
         global_attn_scores = global_attn_scores.masked_fill(~global_k_mask.unsqueeze(1), float('-inf'))
 
         attn_scores = torch.cat([global_attn_scores, local_attn_scores], dim=-1)
-        attn_probs = F.softmax(attn_scores, dim=-1, dtype=torch.float32)
+        attn_probs = F.softmax(attn_scores, dim=-1)
         attn_probs = self.dropout_layer(attn_probs)
 
         global_probs = attn_probs[:, :, :max_global]
@@ -89,14 +87,22 @@ class LongformerAttentionMethod(nn.Module):
             global_out_scores = global_out_scores.masked_fill(kv_mask == 0, float('-inf'))
             vg = vg.masked_fill(kv_mask.unsqueeze(-1) == 0, 0.0)
 
-        global_out_probs = F.softmax(global_out_scores, dim=-1, dtype=torch.float32)
+        global_out_probs = F.softmax(global_out_scores, dim=-1)
         global_out_probs = self.dropout_layer(global_out_probs)
         context_g = torch.bmm(global_out_probs.unsqueeze(1), vg).squeeze(1)
 
         context[b_idx, t_idx] = context_g
 
         context = context.view(batch_size, num_heads, seq_len, head_dim)
-        return context, attn_probs.view(batch_size, num_heads, seq_len, -1)
+        return context, None
+
+    def forward(self, q, k, v, numeric_embedding_manager, global_attention_mask=None, padding_and_loss_attention_mask=None, **kwargs):
+        return checkpoint(
+            self._forward_inner,
+            q, k, v, numeric_embedding_manager, global_attention_mask, padding_and_loss_attention_mask,
+            **kwargs,
+            use_reentrant = False,
+        )
 
 def _slice_attention_score_chunks_into_exact_windows(attn_scores_in_chunks, window_size):
     diagonal = _skew_query_key_matrix(attn_scores_in_chunks, direction=(0, 0, 0, 1), padding_value=-float("inf"))
