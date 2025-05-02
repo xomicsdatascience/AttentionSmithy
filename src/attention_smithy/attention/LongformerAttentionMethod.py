@@ -31,7 +31,7 @@ class LongformerAttentionMethod(nn.Module):
             is_global = torch.zeros(batch_size * num_heads, seq_len, dtype=torch.bool, device=device)
         else:
             is_global = global_attention_mask > 0
-            is_global = is_global.unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len)
+            is_global = is_global.unsqueeze(1).expand(-1, num_heads, -1).reshape(batch_size * num_heads, seq_len).to(device)
 
         local_attn_scores = _sliding_chunks_matmul_qk(q, k, self.attention_window)
         local_attn_scores = _mask_local_attention_edges_and_globals_and_padding(local_attn_scores, self.attention_window, is_global=is_global, padding_mask=padding_mask)
@@ -135,7 +135,7 @@ def _mask_local_attention_edges_and_globals_and_padding(attn_scores, window_size
         is_global = is_global.bool()
 
         # Lookup global token status for each relative position
-        rel_positions = rel_positions.clamp(min=0, max=seq_len - 1)  # (T, W)
+        rel_positions = rel_positions.clamp(min=0, max=seq_len - 1).to(device)
         global_mask = torch.gather(
             is_global.unsqueeze(1).expand(-1, seq_len, -1),  # (B*N, T, T)
             dim=2,
