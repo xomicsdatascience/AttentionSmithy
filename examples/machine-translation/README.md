@@ -46,7 +46,7 @@ To ensure compatibility, use Python 3.9 or greater. You can set up the environme
 Once the environment is set up and activated, install the necessary packages:
 
 ```sh
-pip install attention-smithy datasets
+pip install attention-smithy==1.2.1 datasets
 ```
 
 ## Running the Pipeline
