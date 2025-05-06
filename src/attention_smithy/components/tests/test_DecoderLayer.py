@@ -77,7 +77,6 @@ def test__DecoderLayer__throws_warning_error_when_standard_self_attention_method
     standard_attention_method__without_causal_masking = StandardAttentionMethod()
     cross_attention = MultiheadAttention(embedding_dimension, number_of_heads, standard_attention_method__without_causal_masking)
     with pytest.raises(RuntimeWarning, match=re.escape(is_causal_masking_warning_error)):
-        print(is_causal_masking_warning_error)
         standard_decoder_layer = DecoderLayer(embedding_dimension, self_attention, cross_attention, feed_forward_network, dropout)
 
 @pytest.fixture
