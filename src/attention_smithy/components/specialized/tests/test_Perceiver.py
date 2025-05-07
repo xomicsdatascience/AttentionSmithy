@@ -51,8 +51,8 @@ def test__PerceiverEncoderLayer__forward_output_shape_and_values():
         latent_encoder=latent_encoder,
         dropout=0.0,
     )
-    perceiver_layer.cross_attention_sublayer.norm = DummyNorm()
-    perceiver_layer.feed_forward_sublayer.norm = DummyNorm()
+    perceiver_layer.cross_attention_sublayer.post_norm = DummyNorm()
+    perceiver_layer.feed_forward_sublayer.post_norm = DummyNorm()
 
     output = perceiver_layer(latent, src, src_padding_mask)
     # Expected transformation:

@@ -1,6 +1,8 @@
 import torch
 from torch import nn
+from typing import Union
 from attention_smithy.components import SublayerUnit, MultiheadAttention, FeedForwardNetwork
+from attention_smithy.components.sublayer_helpers import wrap_sublayer
 
 class EncoderLayer(nn.Module):
     """
@@ -11,8 +13,8 @@ class EncoderLayer(nn.Module):
     """
     def __init__(self,
                  embedding_dimension: int,
-                 self_attention: MultiheadAttention,
-                 feed_forward: FeedForwardNetwork,
+                 self_attention: Union[MultiheadAttention, SublayerUnit],
+                 feed_forward: Union[FeedForwardNetwork, SublayerUnit],
                  dropout: float,
                  ) -> None:
         """
@@ -25,8 +27,8 @@ class EncoderLayer(nn.Module):
             dropout (float, optional): The dropout probability. Defaults to 0.0.
         """
         super().__init__()
-        self.self_attention_sublayer = SublayerUnit(self_attention, embedding_dimension, dropout)
-        self.feed_forward_sublayer = SublayerUnit(feed_forward, embedding_dimension, dropout)
+        self.self_attention_sublayer = wrap_sublayer(self_attention, embedding_dimension, dropout)
+        self.feed_forward_sublayer = wrap_sublayer(feed_forward, embedding_dimension, dropout)
         self.embedding_dimension = embedding_dimension
 
     def forward(self,

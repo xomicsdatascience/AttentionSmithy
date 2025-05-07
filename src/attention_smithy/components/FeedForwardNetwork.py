@@ -24,7 +24,12 @@ class FeedForwardNetwork(nn.Module):
             dropout (float, optional): The dropout probability. Defaults to 0.0.
         """
         super().__init__()
-        self.weights_to_feed_forward_dimension = nn.Linear(embedding_dimension, feed_forward_dimension)
+        if activation_function_string.lower() in ["reglu", "geglu", "siglu"]:
+            inner_dim = feed_forward_dimension * 2
+        else:
+            inner_dim = feed_forward_dimension
+
+        self.weights_to_feed_forward_dimension = nn.Linear(embedding_dimension, inner_dim)
         self.weights_back_to_embedding_dimension = nn.Linear(feed_forward_dimension, embedding_dimension)
         self.dropout = nn.Dropout(dropout)
         self.activation = select_activation_function_module(activation_function_string)
