@@ -81,7 +81,8 @@ class MultiheadAttention(nn.Module):
         query = numeric_embedding_manager.modify_matrix(query, **kwargs)
         key = numeric_embedding_manager.modify_matrix(key, **kwargs)
         attention_output, attention_probabilities = self.attention_method(
-            query, key, value, numeric_embedding_manager, **kwargs
+            query, key, value, numeric_embedding_manager,
+            input_query=input_query, input_key=input_key, input_value=input_value, **kwargs
         )
         attention_output = self._reshape_attention_output_to_match_query_shape(attention_output, input_query)
         output = self.out_weights(attention_output)

@@ -4,12 +4,28 @@ import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
 
 class LongformerAttentionMethod(nn.Module):
-    def __init__(self, attention_window: int, dropout: float = 0.0):
+    def __init__(self, attention_window: int, dropout: float = 0.0, embedding_dimension: int = None, use_global_weights: bool = False):
         super().__init__()
         self.attention_window = attention_window
         self.dropout_layer = nn.Dropout(dropout)
+        self.use_global_weights = use_global_weights
 
-    def _forward_inner(self, q, k, v, numeric_embedding_manager, global_attention_mask, padding_and_loss_attention_mask, **kwargs):
+        if self.use_global_weights:
+            if embedding_dimension is None:
+                raise ValueError("embedding_dimension must be provided when use_global_weights is True")
+            self.global_query_weights = nn.Linear(embedding_dimension, embedding_dimension)
+            self.global_key_weights = nn.Linear(embedding_dimension, embedding_dimension)
+            self.global_value_weights = nn.Linear(embedding_dimension, embedding_dimension)
+
+    def _forward_inner(
+        self,
+        q, k, v,
+        numeric_embedding_manager,
+        global_attention_mask,
+        padding_and_loss_attention_mask,
+        input_query, input_key, input_value,
+        **kwargs
+    ):
         batch_size, num_heads, seq_len, head_dim = q.size()
         device = q.device
         scale = head_dim ** 0.5
@@ -44,26 +60,30 @@ class LongformerAttentionMethod(nn.Module):
             context = context.view(batch_size, num_heads, seq_len, head_dim)
             return context, None
 
-        b_idx, t_idx = is_global.nonzero(as_tuple=True)
+        # Get the indices of global tokens
+        batch_head_idx, token_idx = is_global.nonzero(as_tuple=True)
 
-        global_index_pos = is_global.cumsum(dim=1) - 1
-        global_index_pos = global_index_pos.masked_fill(~is_global, 0)
+        # Compute the position of each global token within its batch-head group
+        global_token_positions = is_global.cumsum(dim=1) - 1
+        global_token_positions = global_token_positions.masked_fill(~is_global, 0)
 
-        global_k = torch.zeros(batch_size * num_heads, max_global, head_dim, device=device)
-        global_v = torch.zeros_like(global_k)
-        global_k_mask = torch.zeros(batch_size * num_heads, max_global, dtype=torch.bool, device=device)
+        # Initialize tensors to hold the gathered global keys, values, and their masks
+        global_keys_sparse = torch.zeros(batch_size * num_heads, max_global, head_dim, device=device)
+        global_values_sparse = torch.zeros_like(global_keys_sparse)
+        global_mask = torch.zeros(batch_size * num_heads, max_global, dtype=torch.bool, device=device)
 
-        global_k[b_idx, global_index_pos[b_idx, t_idx]] = k[b_idx, t_idx]
-        global_v[b_idx, global_index_pos[b_idx, t_idx]] = v[b_idx, t_idx]
-        global_k_mask[b_idx, global_index_pos[b_idx, t_idx]] = True
+        # Fill the tensors with the corresponding global token values
+        global_keys_sparse[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] = k[batch_head_idx, token_idx]
+        global_values_sparse[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] = v[batch_head_idx, token_idx]
+        global_mask[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] = True
 
         if padding_mask is not None:
-            padding_global = padding_mask[b_idx, t_idx].bool()
-            global_k_mask[b_idx, global_index_pos[b_idx, t_idx]] &= padding_global
+            padding_global = padding_mask[batch_head_idx, token_idx].bool()
+            global_mask[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] &= padding_global
 
         q_scaled = q / scale
-        global_attn_scores = torch.bmm(q_scaled, global_k.transpose(1, 2))
-        global_attn_scores = global_attn_scores.masked_fill(~global_k_mask.unsqueeze(1), float('-inf'))
+        global_attn_scores = torch.bmm(q_scaled, global_keys_sparse.transpose(1, 2))
+        global_attn_scores = global_attn_scores.masked_fill(~global_mask.unsqueeze(1), float('-inf'))
 
         attn_scores = torch.cat([global_attn_scores, local_attn_scores], dim=-1)
         attn_probs = F.softmax(attn_scores, dim=-1)
@@ -73,35 +93,70 @@ class LongformerAttentionMethod(nn.Module):
         local_probs = attn_probs[:, :, max_global:]
 
         context_local = _sliding_chunks_matmul_pv(local_probs, v, self.attention_window, batch_size, num_heads)
-        context_global = torch.bmm(global_probs, global_v)
+        context_global = torch.bmm(global_probs, global_values_sparse)
         context = context_local + context_global
 
-        qg = q[b_idx, t_idx]
-        kg = k[b_idx]
-        vg = v[b_idx]
 
-        global_out_scores = torch.bmm(qg.unsqueeze(1), kg.transpose(1, 2)).squeeze(1) / scale
+        if self.use_global_weights:
+
+            global_query_all_tokens = self.global_query_weights(input_query)
+            global_key_all_tokens = self.global_key_weights(input_key)
+            global_value_all_tokens = self.global_value_weights(input_value)
+
+            # Reshape raw inputs
+            global_query_all_tokens = global_query_all_tokens.view(batch_size, seq_len, num_heads, head_dim).transpose(1, 2)
+            global_key_all_tokens = global_key_all_tokens.view(batch_size, seq_len, num_heads, head_dim).transpose(1, 2)
+            global_value_all_tokens = global_value_all_tokens.view(batch_size, seq_len, num_heads, head_dim).transpose(1, 2)
+
+            # Flatten
+            global_query_all_tokens = global_query_all_tokens.reshape(batch_size * num_heads, seq_len, head_dim)
+            global_key_all_tokens = global_key_all_tokens.reshape(batch_size * num_heads, seq_len, head_dim)
+            global_value_all_tokens = global_value_all_tokens.reshape(batch_size * num_heads, seq_len, head_dim)
+
+            used_query = global_query_all_tokens
+            used_key = global_key_all_tokens
+            used_value = global_value_all_tokens
+
+        else:
+            used_query = q
+            used_key = k
+            used_value = v
+
+        global_query = used_query[batch_head_idx, token_idx]
+        global_key = used_key[batch_head_idx]
+        global_value = used_value[batch_head_idx]
+
+        global_out_scores = torch.bmm(global_query.unsqueeze(1), global_key.transpose(1, 2)).squeeze(1) / scale
 
         if padding_mask is not None:
-            kv_mask = padding_mask[b_idx]
+            kv_mask = padding_mask[batch_head_idx]
             global_out_scores = global_out_scores.masked_fill(kv_mask == 0, float('-inf'))
-            vg = vg.masked_fill(kv_mask.unsqueeze(-1) == 0, 0.0)
+            global_value = global_value.masked_fill(kv_mask.unsqueeze(-1) == 0, 0.0)
 
         global_out_probs = F.softmax(global_out_scores, dim=-1)
         global_out_probs = self.dropout_layer(global_out_probs)
-        context_g = torch.bmm(global_out_probs.unsqueeze(1), vg).squeeze(1)
+        context_global = torch.bmm(global_out_probs.unsqueeze(1), global_value).squeeze(1)
 
-        context[b_idx, t_idx] = context_g
+        context[batch_head_idx, token_idx] = context_global
 
         context = context.view(batch_size, num_heads, seq_len, head_dim)
         return context, None
 
-    def forward(self, q, k, v, numeric_embedding_manager, global_attention_mask=None, padding_and_loss_attention_mask=None, **kwargs):
+    def forward(
+        self,
+        q, k, v,
+        numeric_embedding_manager,
+        global_attention_mask=None,
+        padding_and_loss_attention_mask=None,
+        input_query=None, input_key=None, input_value=None,
+        **kwargs
+    ):
         return checkpoint(
             self._forward_inner,
             q, k, v, numeric_embedding_manager, global_attention_mask, padding_and_loss_attention_mask,
+            input_query, input_key, input_value,
             **kwargs,
-            use_reentrant = False,
+            use_reentrant=False,
         )
 
 def _slice_attention_score_chunks_into_exact_windows(attn_scores_in_chunks, window_size):
