@@ -22,7 +22,6 @@ class LinformerAttentionMethod(nn.Module):
         self.k = k
         self.share_kv = share_kv
 
-        # Projection matrices: (seq_len, k)
         self.proj_k = nn.Parameter(self._init_proj(sequence_length, k))
         if not share_kv:
             self.proj_v = nn.Parameter(self._init_proj(sequence_length, k))
@@ -55,24 +54,30 @@ class LinformerAttentionMethod(nn.Module):
         _, _, kv_len, _ = k.shape
         assert kv_len <= self.sequence_length, f"kv_len={kv_len} exceeds max seq length {self.sequence_length}"
 
-        proj_k = self.proj_k[:kv_len, :]  # (kv_len, k)
-        proj_v = proj_k if self.share_kv else self.proj_v[:kv_len, :]  # (kv_len, k)
+        proj_k = self.proj_k[:kv_len, :]
+        proj_v = proj_k if self.share_kv else self.proj_v[:kv_len, :]
 
-        # --- Pre-projection masking on k and v
-        if padding_and_loss_attention_mask is not None:
-            # shape: (batch, 1, kv_len, 1) → broadcast across heads, head_dim
-            mask_exp = padding_and_loss_attention_mask.unsqueeze(1).unsqueeze(-1)
-            k = k * mask_exp
-            v = v * mask_exp
+        k, v = self._apply_masking_before_projection(k, padding_and_loss_attention_mask, v)
+        k_proj, v_proj = self._project_keys_and_values_over_sequence_length(k, proj_k, proj_v, v)
+        attn_probs = self._compute_attention_probabilities(d_h, k_proj, q)
 
-        # --- Project keys and values over sequence length
-        k_proj = torch.einsum('bhnd,nk->bhkd', k, proj_k)  # (batch, heads, k, head_dim)
-        v_proj = torch.einsum('bhnd,nk->bhkd', v, proj_v)  # (batch, heads, k, head_dim)
+        out = torch.einsum('bhqk,bhkd->bhqd', attn_probs, v_proj)
+        return out, attn_probs
 
-        # --- Compute attention scores
+    def _compute_attention_probabilities(self, d_h, k_proj, q):
         scores = torch.einsum('bhqd,bhkd->bhqk', q, k_proj) / math.sqrt(d_h)
         attn_probs = F.softmax(scores, dim=-1)
         attn_probs = self.dropout_layer(attn_probs)
+        return attn_probs
 
-        out = torch.einsum('bhqk,bhkd->bhqd', attn_probs, v_proj)  # (batch, heads, query_len, head_dim)
-        return out, attn_probs
+    def _project_keys_and_values_over_sequence_length(self, k, proj_k, proj_v, v):
+        k_proj = torch.einsum('bhnd,nk->bhkd', k, proj_k)
+        v_proj = torch.einsum('bhnd,nk->bhkd', v, proj_v)
+        return k_proj, v_proj
+
+    def _apply_masking_before_projection(self, k, padding_and_loss_attention_mask, v):
+        if padding_and_loss_attention_mask is not None:
+            mask_exp = padding_and_loss_attention_mask.unsqueeze(1).unsqueeze(-1)
+            k = k * mask_exp
+            v = v * mask_exp
+        return k, v
