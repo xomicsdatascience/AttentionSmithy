@@ -2,6 +2,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.checkpoint import checkpoint
+from collections import namedtuple
+
+AttentionInputs = namedtuple('AttentionInputs', ['q', 'k', 'v'])
+OriginalInputs = namedtuple('OriginalInputs', ['query', 'key', 'value'])
+MasksAndGlobals = namedtuple('MasksAndGlobals', ['global_mask', 'padding_mask', 'is_global', 'max_global', 'batch_head_idx', 'token_idx'])
 
 class LongformerAttentionMethod(nn.Module):
     def __init__(self, attention_window: int, dropout: float = 0.0, embedding_dimension: int = None, use_global_weights: bool = False):
@@ -17,62 +22,73 @@ class LongformerAttentionMethod(nn.Module):
             self.global_key_weights = nn.Linear(embedding_dimension, embedding_dimension)
             self.global_value_weights = nn.Linear(embedding_dimension, embedding_dimension)
 
-    def _forward_inner(
-        self,
-        q, k, v,
-        numeric_embedding_manager,
-        global_attention_mask,
-        padding_and_loss_attention_mask,
-        input_query, input_key, input_value,
-        **kwargs
-    ):
-        device, scale = self._variable_setting_and_basic_assertions(k, q, v)
+    def _set_context(self, q):
+        self._ctx = {
+            'batch_size': q.size(0),
+            'num_heads': q.size(1),
+            'seq_len': q.size(2),
+            'head_dim': q.size(3),
+            'device': q.device,
+            'scale': q.size(3) ** 0.5,
+        }
+
+    def forward(self, q, k, v, numeric_embedding_manager, global_attention_mask=None, padding_and_loss_attention_mask=None, input_query=None, input_key=None, input_value=None, **kwargs):
+        self._set_context(q)
         k, q, v = self._reshape_inputs(k, q, v)
-        is_global, padding_mask = self._prepare_masks(device, global_attention_mask, padding_and_loss_attention_mask)
 
-        local_attn_scores = self._compute_local_attention(is_global, k, padding_mask, q)
+        attn_inputs = AttentionInputs(q, k, v)
+        orig_inputs = OriginalInputs(input_query, input_key, input_value)
 
-        max_global = self._determine_max_global_of_each_sample(is_global)
-        if max_global == 0:
-            context = self._finalize_local_attention_only(local_attn_scores, v)
+        masks_and_globals = self._prepare_masks_and_globals(global_attention_mask, padding_and_loss_attention_mask)
+
+        return checkpoint(
+            self._forward_inner,
+            attn_inputs,
+            numeric_embedding_manager,
+            masks_and_globals,
+            orig_inputs,
+            **kwargs,
+            use_reentrant=False,
+        )
+
+    def _forward_inner(self, attn_inputs, numeric_embedding_manager, masks_and_globals, orig_inputs, **kwargs):
+        self._basic_assertions(attn_inputs)
+        local_attn_scores = self._compute_local_attention(attn_inputs, masks_and_globals)
+
+        if masks_and_globals.max_global == 0:
+            context = self._finalize_local_attention_only(local_attn_scores, attn_inputs.v)
             return context, None
 
-        batch_head_idx, token_idx = is_global.nonzero(as_tuple=True)
+        global_keys_sparse, global_values_sparse, global_mask_sparse, global_token_positions = self._slim_down_kv_matrices_to_just_global_position_versions(
+            attn_inputs, masks_and_globals)
 
-        global_keys_sparse, global_values_sparse, global_mask, global_token_positions = self._slim_down_kv_matrices_to_just_global_position_versions(
-            batch_head_idx, device, is_global, k, token_idx, v, max_global)
+        self._apply_padding_to_all_t_global(global_token_positions, global_mask_sparse, masks_and_globals)
 
-        self._apply_padding_to_all_t_global(batch_head_idx, global_mask, global_token_positions, padding_mask, token_idx)
+        global_attn_scores = self._compute_all_t_global_attention_scores(global_keys_sparse, global_mask_sparse, attn_inputs)
 
-        global_attn_scores = self._compute_all_t_global_attention_scores(global_keys_sparse, global_mask, q, scale)
+        used_key, used_query, used_value = self._determine_matries_to_use_for_global_t_global_calculations(attn_inputs, orig_inputs)
 
-        used_key, used_query, used_value = self._determine_matries_to_use_for_global_t_global_calculations(input_key, input_query, input_value, k,
-                                                                                q, v)
+        global_key, global_query, global_value = self._select_global_t_global_tokens_only(used_key, used_query, used_value, masks_and_globals)
 
-        global_key, global_query, global_value = self._select_global_t_global_tokens_only(batch_head_idx, token_idx, used_key,
-                                                                                 used_query, used_value)
+        global_out_scores = self._calculate_global_t_global_attention(global_key, global_query)
 
-        global_out_scores = self._calculate_global_t_global_attention(global_key, global_query, scale)
-
-        global_out_scores, global_value = self._apply_padding_to_global_t_global_attention_scores(batch_head_idx,
-                                                                                                  global_out_scores,
+        global_out_scores, global_value = self._apply_padding_to_global_t_global_attention_scores(global_out_scores,
                                                                                                   global_value,
-                                                                                                  padding_mask)
+                                                                                                  masks_and_globals)
 
-        context = self._combine_all_context_outputs(batch_head_idx, global_attn_scores, global_out_scores, global_value,
-                                                    global_values_sparse, local_attn_scores, max_global, token_idx, v)
+        context = self._combine_all_context_outputs(global_attn_scores, global_out_scores, global_value,
+                                                    global_values_sparse, local_attn_scores, attn_inputs, masks_and_globals)
 
-        context = context.view(self.batch_size, self.num_heads, self.sequence_length, self.head_dimension)
+        context = context.view(self._ctx["batch_size"], self._ctx["num_heads"], self._ctx["seq_len"], self._ctx["head_dim"])
 
         return context, None
 
-    def _combine_all_context_outputs(self, batch_head_idx, global_attn_scores, global_out_scores, global_value,
-                                     global_values_sparse, local_attn_scores, max_global, token_idx, v):
+    def _combine_all_context_outputs(self, global_attn_scores, global_out_scores, global_value,
+                                     global_values_sparse, local_attn_scores, attn_inputs, masks_and_globals):
         context = self._combine_local_and_all_t_global_contexts(global_attn_scores, global_values_sparse,
-                                                                local_attn_scores,
-                                                                max_global, v)
+                                                                local_attn_scores, attn_inputs, masks_and_globals)
         context_global = self._calculate_global_t_global_output(global_out_scores, global_value)
-        context[batch_head_idx, token_idx] = context_global
+        context[masks_and_globals.batch_head_idx, masks_and_globals.token_idx] = context_global
         return context
 
     def _calculate_global_t_global_output(self, global_out_scores, global_value):
@@ -81,38 +97,37 @@ class LongformerAttentionMethod(nn.Module):
         context_global = torch.bmm(global_out_probs.unsqueeze(1), global_value).squeeze(1)
         return context_global
 
-    def _apply_padding_to_global_t_global_attention_scores(self, batch_head_idx, global_out_scores, global_value,
-                                                           padding_mask):
-        if padding_mask is not None:
-            kv_mask = padding_mask[batch_head_idx]
+    def _apply_padding_to_global_t_global_attention_scores(self, global_out_scores, global_value, masks_and_globals):
+        if masks_and_globals.padding_mask is not None:
+            kv_mask = masks_and_globals.padding_mask[masks_and_globals.batch_head_idx]
             global_out_scores = global_out_scores.masked_fill(kv_mask == 0, float('-inf'))
             global_value = global_value.masked_fill(kv_mask.unsqueeze(-1) == 0, 0.0)
         return global_out_scores, global_value
 
-    def _calculate_global_t_global_attention(self, global_key, global_query, scale):
-        global_out_scores = torch.bmm(global_query.unsqueeze(1), global_key.transpose(1, 2)).squeeze(1) / scale
+    def _calculate_global_t_global_attention(self, global_key, global_query):
+        global_out_scores = torch.bmm(global_query.unsqueeze(1), global_key.transpose(1, 2)).squeeze(1) / self._ctx["scale"]
         return global_out_scores
 
-    def _select_global_t_global_tokens_only(self, batch_head_idx, token_idx, used_key, used_query, used_value):
-        global_query = used_query[batch_head_idx, token_idx]
-        global_key = used_key[batch_head_idx]
-        global_value = used_value[batch_head_idx]
+    def _select_global_t_global_tokens_only(self, used_key, used_query, used_value, masks_and_globals):
+        global_query = used_query[masks_and_globals.batch_head_idx, masks_and_globals.token_idx]
+        global_key = used_key[masks_and_globals.batch_head_idx]
+        global_value = used_value[masks_and_globals.batch_head_idx]
         return global_key, global_query, global_value
 
-    def _determine_matries_to_use_for_global_t_global_calculations(self, input_key, input_query, input_value, k, q, v):
+    def _determine_matries_to_use_for_global_t_global_calculations(self, attn_inputs, orig_inputs):
         if self.use_global_weights:
 
-            global_query_all_tokens = self.global_query_weights(input_query)
-            global_key_all_tokens = self.global_key_weights(input_key)
-            global_value_all_tokens = self.global_value_weights(input_value)
+            global_query_all_tokens = self.global_query_weights(orig_inputs.query)
+            global_key_all_tokens = self.global_key_weights(orig_inputs.key)
+            global_value_all_tokens = self.global_value_weights(orig_inputs.value)
 
             # Reshape raw inputs
-            global_query_all_tokens = global_query_all_tokens.view(self.batch_size, self.sequence_length,
-                                                                   self.num_heads, self.head_dimension).transpose(1, 2)
-            global_key_all_tokens = global_key_all_tokens.view(self.batch_size, self.sequence_length, self.num_heads,
-                                                               self.head_dimension).transpose(1, 2)
-            global_value_all_tokens = global_value_all_tokens.view(self.batch_size, self.sequence_length,
-                                                                   self.num_heads, self.head_dimension).transpose(1, 2)
+            global_query_all_tokens = global_query_all_tokens.view(self._ctx["batch_size"], self._ctx["seq_len"],
+                                                                   self._ctx["num_heads"], self._ctx["head_dim"]).transpose(1, 2)
+            global_key_all_tokens = global_key_all_tokens.view(self._ctx["batch_size"], self._ctx["seq_len"], self._ctx["num_heads"],
+                                                               self._ctx["head_dim"]).transpose(1, 2)
+            global_value_all_tokens = global_value_all_tokens.view(self._ctx["batch_size"], self._ctx["seq_len"],
+                                                                   self._ctx["num_heads"], self._ctx["head_dim"]).transpose(1, 2)
 
             # Flatten
             global_key_all_tokens, global_query_all_tokens, global_value_all_tokens = self._reshape_inputs(
@@ -123,47 +138,46 @@ class LongformerAttentionMethod(nn.Module):
             used_value = global_value_all_tokens
 
         else:
-            used_query = q
-            used_key = k
-            used_value = v
+            used_query = attn_inputs.q
+            used_key = attn_inputs.k
+            used_value = attn_inputs.v
         return used_key, used_query, used_value
 
-    def _combine_local_and_all_t_global_contexts(self, global_attn_scores, global_values_sparse, local_attn_scores,
-                                           max_global, v):
+    def _combine_local_and_all_t_global_contexts(self, global_attn_scores, global_values_sparse, local_attn_scores, attn_inputs, masks_and_globals):
         attn_scores = torch.cat([global_attn_scores, local_attn_scores], dim=-1)
         attn_probs = F.softmax(attn_scores, dim=-1)
         attn_probs = self.dropout_layer(attn_probs)
-        global_probs = attn_probs[:, :, :max_global]
-        local_probs = attn_probs[:, :, max_global:]
-        context_local = _sliding_chunks_matmul_pv(local_probs, v, self.attention_window, self.batch_size,
-                                                  self.num_heads)
+        global_probs = attn_probs[:, :, :masks_and_globals.max_global]
+        local_probs = attn_probs[:, :, masks_and_globals.max_global:]
+        context_local = _sliding_chunks_matmul_pv(local_probs, attn_inputs.v, self.attention_window, self._ctx["batch_size"],
+                                                  self._ctx["num_heads"])
         context_global = torch.bmm(global_probs, global_values_sparse)
         context = context_local + context_global
         return context
 
-    def _compute_all_t_global_attention_scores(self, global_keys_sparse, global_mask, q, scale):
-        q_scaled = q / scale
+    def _compute_all_t_global_attention_scores(self, global_keys_sparse, global_mask_sparse, attn_inputs):
+        q_scaled = attn_inputs.q / self._ctx["scale"]
         global_attn_scores = torch.bmm(q_scaled, global_keys_sparse.transpose(1, 2))
-        global_attn_scores = global_attn_scores.masked_fill(~global_mask.unsqueeze(1), float('-inf'))
+        global_attn_scores = global_attn_scores.masked_fill(~global_mask_sparse.unsqueeze(1), float('-inf'))
         return global_attn_scores
 
-    def _apply_padding_to_all_t_global(self, batch_head_idx, global_mask, global_token_positions, padding_mask, token_idx):
-        if padding_mask is not None:
-            padding_global = padding_mask[batch_head_idx, token_idx].bool()
-            global_mask[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] &= padding_global
+    def _apply_padding_to_all_t_global(self, global_token_positions, global_mask_sparse, masks_and_globals):
+        if masks_and_globals.padding_mask is not None:
+            padding_global = masks_and_globals.padding_mask[masks_and_globals.batch_head_idx, masks_and_globals.token_idx].bool()
+            global_mask_sparse[masks_and_globals.batch_head_idx, global_token_positions[masks_and_globals.batch_head_idx, masks_and_globals.token_idx]] &= padding_global
 
-    def _slim_down_kv_matrices_to_just_global_position_versions(self, batch_head_idx, device, is_global, k, token_idx, v, max_global):
-        global_token_positions = is_global.cumsum(dim=1) - 1
-        global_token_positions = global_token_positions.masked_fill(~is_global, 0)
-        global_keys_sparse = torch.zeros(self.batch_size * self.num_heads, max_global, self.head_dimension,
-                                         device=device)
+    def _slim_down_kv_matrices_to_just_global_position_versions(self, attn_inputs, masks_and_globals):
+        global_token_positions = masks_and_globals.is_global.cumsum(dim=1) - 1
+        global_token_positions = global_token_positions.masked_fill(~masks_and_globals.is_global, 0)
+        global_keys_sparse = torch.zeros(self._ctx["batch_size"] * self._ctx["num_heads"], masks_and_globals.max_global, self._ctx["head_dim"],
+                                         device=self._ctx["device"])
         global_values_sparse = torch.zeros_like(global_keys_sparse)
-        global_mask = torch.zeros(self.batch_size * self.num_heads, max_global, dtype=torch.bool, device=device)
-        global_keys_sparse[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] = k[
-            batch_head_idx, token_idx]
-        global_values_sparse[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] = v[
-            batch_head_idx, token_idx]
-        global_mask[batch_head_idx, global_token_positions[batch_head_idx, token_idx]] = True
+        global_mask = torch.zeros(self._ctx["batch_size"] * self._ctx["num_heads"], masks_and_globals.max_global, dtype=torch.bool, device=self._ctx["device"])
+        global_keys_sparse[masks_and_globals.batch_head_idx, global_token_positions[masks_and_globals.batch_head_idx, masks_and_globals.token_idx]] = attn_inputs.k[
+            masks_and_globals.batch_head_idx, masks_and_globals.token_idx]
+        global_values_sparse[masks_and_globals.batch_head_idx, global_token_positions[masks_and_globals.batch_head_idx, masks_and_globals.token_idx]] = attn_inputs.v[
+            masks_and_globals.batch_head_idx, masks_and_globals.token_idx]
+        global_mask[masks_and_globals.batch_head_idx, global_token_positions[masks_and_globals.batch_head_idx, masks_and_globals.token_idx]] = True
         return global_keys_sparse, global_values_sparse, global_mask, global_token_positions
 
     def _determine_max_global_of_each_sample(self, is_global):
@@ -173,62 +187,51 @@ class LongformerAttentionMethod(nn.Module):
     def _finalize_local_attention_only(self, local_attn_scores, v):
         attn_probs = F.softmax(local_attn_scores, dim=-1)
         attn_probs = self.dropout_layer(attn_probs)
-        context = _sliding_chunks_matmul_pv(attn_probs, v, self.attention_window, self.batch_size, self.num_heads)
-        context = context.view(self.batch_size, self.num_heads, self.sequence_length, self.head_dimension)
+        context = _sliding_chunks_matmul_pv(attn_probs, v, self.attention_window, self._ctx["batch_size"], self._ctx["num_heads"])
+        context = context.view(self._ctx["batch_size"], self._ctx["num_heads"], self._ctx["seq_len"], self._ctx["head_dim"])
         return context
 
-    def _compute_local_attention(self, is_global, k, padding_mask, q):
-        local_attn_scores = _sliding_chunks_matmul_qk(q, k, self.attention_window)
+    def _compute_local_attention(self, attn_inputs, masks):
+        local_attn_scores = _sliding_chunks_matmul_qk(attn_inputs.q, attn_inputs.k, self.attention_window)
         local_attn_scores = _mask_local_attention_edges_and_globals_and_padding(local_attn_scores,
                                                                                 self.attention_window,
-                                                                                is_global=is_global,
-                                                                                padding_mask=padding_mask)
+                                                                                is_global=masks.is_global,
+                                                                                padding_mask=masks.padding_mask)
         return local_attn_scores
+
+    def _prepare_masks_and_globals(self, global_attention_mask, padding_and_loss_attention_mask):
+        is_global, padding_mask = self._prepare_masks(self._ctx["device"], global_attention_mask,
+                                                      padding_and_loss_attention_mask)
+        max_global = self._determine_max_global_of_each_sample(is_global)
+        batch_head_idx, tuple_idx, = is_global.nonzero(as_tuple=True)
+        masks_and_globals = MasksAndGlobals(global_attention_mask, padding_mask, is_global, max_global, batch_head_idx,
+                                            tuple_idx)
+        return masks_and_globals
+
 
     def _prepare_masks(self, device, global_attention_mask, padding_and_loss_attention_mask):
         if padding_and_loss_attention_mask is not None:
-            padding_mask = padding_and_loss_attention_mask.unsqueeze(1).expand(-1, self.num_heads, -1).reshape(
-                self.batch_size * self.num_heads, self.sequence_length)
+            padding_mask = padding_and_loss_attention_mask.unsqueeze(1).expand(-1, self._ctx["num_heads"], -1).reshape(
+                self._ctx["batch_size"] * self._ctx["num_heads"], self._ctx["seq_len"])
         else:
             padding_mask = None
         if global_attention_mask is None:
-            is_global = torch.zeros(self.batch_size * self.num_heads, self.sequence_length, dtype=torch.bool,
-                                    device=device)
+            is_global = torch.zeros(self._ctx["batch_size"] * self._ctx["num_heads"], self._ctx["seq_len"], dtype=torch.bool,
+                                    device=self._ctx["device"])
         else:
-            is_global = global_attention_mask.bool().unsqueeze(1).expand(-1, self.num_heads, -1).reshape(
-                self.batch_size * self.num_heads, self.sequence_length).to(device)
+            is_global = global_attention_mask.bool().unsqueeze(1).expand(-1, self._ctx["num_heads"], -1).reshape(
+                self._ctx["batch_size"] * self._ctx["num_heads"], self._ctx["seq_len"]).to(self._ctx["device"])
         return is_global, padding_mask
 
     def _reshape_inputs(self, k, q, v):
-        q = q.reshape(self.batch_size * self.num_heads, self.sequence_length, self.head_dimension)
-        k = k.reshape(self.batch_size * self.num_heads, self.sequence_length, self.head_dimension)
-        v = v.reshape(self.batch_size * self.num_heads, self.sequence_length, self.head_dimension)
+        q = q.reshape(self._ctx["batch_size"] * self._ctx["num_heads"], self._ctx["seq_len"], self._ctx["head_dim"])
+        k = k.reshape(self._ctx["batch_size"] * self._ctx["num_heads"], self._ctx["seq_len"], self._ctx["head_dim"])
+        v = v.reshape(self._ctx["batch_size"] * self._ctx["num_heads"], self._ctx["seq_len"], self._ctx["head_dim"])
         return k, q, v
 
-    def _variable_setting_and_basic_assertions(self, k, q, v):
-        self.batch_size, self.num_heads, self.sequence_length, self.head_dimension = q.size()
-        device = q.device
-        scale = self.head_dimension ** 0.5
-        assert q.size() == k.size() == v.size()
-        assert self.sequence_length % (2 * self.attention_window) == 0, "Sequence length must be divisible by 2w"
-        return device, scale
-
-    def forward(
-        self,
-        q, k, v,
-        numeric_embedding_manager,
-        global_attention_mask=None,
-        padding_and_loss_attention_mask=None,
-        input_query=None, input_key=None, input_value=None,
-        **kwargs
-    ):
-        return checkpoint(
-            self._forward_inner,
-            q, k, v, numeric_embedding_manager, global_attention_mask, padding_and_loss_attention_mask,
-            input_query, input_key, input_value,
-            **kwargs,
-            use_reentrant=False,
-        )
+    def _basic_assertions(self, attn_inputs):
+        assert attn_inputs.q.size() == attn_inputs.k.size() == attn_inputs.v.size()
+        assert self._ctx["seq_len"] % (2 * self.attention_window) == 0, "Sequence length must be divisible by 2w"
 
 def _slice_attention_score_chunks_into_exact_windows(attn_scores_in_chunks, window_size):
     diagonal = _skew_query_key_matrix(attn_scores_in_chunks, direction=(0, 0, 0, 1), padding_value=-float("inf"))
