@@ -60,4 +60,4 @@ class PerceiverEncoderLayer(nn.Module):
             **kwargs
         )
         latent = self.feed_forward_sublayer(latent)
-        return self.latent_encoder(latent, **kwargs)
+        return self.latent_encoder(latent, src_padding_mask=None, **kwargs)

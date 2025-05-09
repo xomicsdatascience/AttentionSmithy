@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "attention_smithy"
-version = "1.2.1"
+version = "1.3.0"
 authors = [
   { name="Caleb Cranney", email="11773171+CCranney@users.noreply.github.com" },
 ]
