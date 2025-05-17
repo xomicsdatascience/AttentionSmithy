@@ -84,13 +84,8 @@ Here is a visual depiction of the different components of a transformer model, u
 
 ## AttentionSmithy Numeric Embedding
 
-Here is a visual depiction of where each positional or numeric embedding fits in to the original model. We have implemented 4 popular strategies (sinusoidal, learned, rotary, ALiBi), but would like to expand to more in the future.
+Here is a visual depiction of where each positional or numeric embedding fits in to the original model.
 
 ![Screenshot 2025-02-10 at 3 49 43 PM](https://github.com/user-attachments/assets/4a7d1983-6594-4953-8936-2b438de5de82)
 
-## AttentionSmithy Attention Methods
-
-Here is a basic visual of possible attention mechanisms AttentionSmithy has been designed to incorporate **_in future development efforts_**. The provided examples include [Longformer attention](https://arxiv.org/abs/2004.05150) and [Big Bird attention](https://arxiv.org/abs/2007.14062).
-
-![Screenshot 2025-02-10 at 3 45 58 PM](https://github.com/user-attachments/assets/8dc33378-4b53-456e-8abb-22ab42c7f6c1)
 
