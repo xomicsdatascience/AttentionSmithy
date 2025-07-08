@@ -128,6 +128,14 @@ class EATLU(nn.Module):
     def forward(self, x):
         return x * torch.arctan(self.alpha * x)
 
+class SquaredReLU(nn.Module):
+    """
+    Squared ReLU activation function.
+    Squares the output of the ReLU function, as described in https://arxiv.org/pdf/2109.08668.
+    """
+    def forward(self, x):
+        return F.relu(x) ** 2
+
 def select_activation_function_module(activation_param: str, **kwargs) -> nn.Module:
     if activation_param == "relu":
         return nn.ReLU()
@@ -159,6 +167,8 @@ def select_activation_function_module(activation_param: str, **kwargs) -> nn.Mod
         return Squareplus(**kwargs)
     elif activation_param == "eatlu":
         return EATLU(**kwargs)
+    elif activation_param == "squared_relu":
+        return SquaredReLU()
     else:
         raise ValueError(f"Unsupported activation function: {activation_param}")
 
